@@ -20,12 +20,12 @@ Or use as a context manager:
 
 from __future__ import annotations
 
-import math
-from typing import Tuple, Dict, Optional, List, Union
+from collections.abc import Sequence
+from typing import Any
 
-import torch
 import numpy as np
-from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve
+import torch
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
 class Viyog:
@@ -48,24 +48,24 @@ class Viyog:
         Device to use for computation. If ``None`` (default) the device is inferred
         from model parameters as needed.
 
-    Attributes
+    Attributes:
     ----------
     id_norm_scores_mean : float or None
         Mean per-sample infinity norm computed by :meth:`fit`. ``None`` until fit
         completes successfully.
     """
 
-    def __init__(self, model: torch.nn.Module, device: Optional[torch.device | str] = None):
+    def __init__(self, model: torch.nn.Module, device: torch.device | str | None = None) -> None:
         self.model = model
         # device may be provided or inferred later
         self.device = torch.device(device) if device is not None else None
 
         # state
-        self.id_norm_scores_mean: Optional[float] = None
-        self._hook_layer_name: Optional[str] = None
-        self._hook_handle: Optional[torch.utils.hooks.RemovableHandle] = None
+        self.id_norm_scores_mean: float | None = None
+        self._hook_layer_name: str | None = None
+        self._hook_handle: torch.utils.hooks.RemovableHandle | None = None
         # will hold last-forward features (detached) while a forward is happening
-        self._features: Dict[str, torch.Tensor] = {}
+        self._features: dict[str, torch.Tensor] = {}
 
         # find conv & attach hook immediately
         name, layer = self._find_first_conv(self.model)
@@ -74,17 +74,17 @@ class Viyog:
         self._hook_layer_name = name
 
         # attach hook that stores a detached tensor on the device of the layer
-        def hook_fn(module, input, output):
+        def hook_fn(module: Any, input: Any, output: Any) -> None:
             # detach to avoid retaining graph; keep on same device for speed
             self._features["first"] = output.detach()
 
         self._hook_handle = layer.register_forward_hook(hook_fn)
 
     # Context-manager helpers so user can rely on deterministic cleanup
-    def __enter__(self) -> "Viyog":
+    def __enter__(self) -> Viyog:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.close()
 
     def close(self) -> None:
@@ -106,7 +106,7 @@ class Viyog:
         Temperature : float, optional
             Temperature scaling factor. Default is 1000.0.
 
-        Returns
+        Returns:
         -------
         torch.Tensor
             Tensor of same shape as ``num`` with values approx in (-1, 1).
@@ -118,19 +118,19 @@ class Viyog:
         return sign / denom
 
     @staticmethod
-    def _find_first_conv(module: torch.nn.Module) -> Tuple[Optional[str], Optional[torch.nn.Module]]:
+    def _find_first_conv(module: torch.nn.Module) -> tuple[str | None, torch.nn.Module | None]:
         """
         Find the first convolutional submodule.
 
         Prefers attribute ``conv1`` if present; otherwise iterates submodules in
         ``named_modules()`` order and returns the first instance of Conv1d/2d/3d.
 
-        Returns
+        Returns:
         -------
         (name, module) or (None, None) if not found
         """
         if hasattr(module, "conv1"):
-            return "conv1", getattr(module, "conv1")
+            return "conv1", module.conv1
         for name, sub in module.named_modules():
             if name == "":
                 continue
@@ -153,7 +153,7 @@ class Viyog:
         """
         Run a forward and return the detached features captured by the hook.
 
-        Notes
+        Notes:
         -----
         - This uses the persistent hook attached in :meth:`__init__`, which writes
           to ``self._features`` under the key ``"first"``.
@@ -181,7 +181,7 @@ class Viyog:
             DataLoader providing samples to estimate the mean activation norm. Each
             yielded batch should be (inputs, labels) or where inputs are the first item.
 
-        Returns
+        Returns:
         -------
         float
             The computed mean per-sample infinity norm (stored in
@@ -219,7 +219,11 @@ class Viyog:
         return self.id_norm_scores_mean
 
     @torch.no_grad()
-    def score(self, x: Union[torch.Tensor, torch.utils.data.DataLoader], Temperature: float = 1000.0) -> torch.Tensor:
+    def score(
+        self,
+        x: torch.Tensor | torch.utils.data.DataLoader,
+        Temperature: float = 1000.0,
+    ) -> torch.Tensor:
         """
         If `x` is a Tensor (batch): returns a 1D tensor of scores for that batch.
         If `x` is a DataLoader: processes entire loader and returns concatenated scores.
@@ -231,7 +235,7 @@ class Viyog:
         Temperature : float, optional
             Temperature scaling factor passed through to :meth:`Viyog_Score`.
 
-        Returns
+        Returns:
         -------
         torch.Tensor
             1D tensor of scores (device equals inferred device).
@@ -245,7 +249,7 @@ class Viyog:
 
         if isinstance(x, torch.utils.data.DataLoader):
             # convenience: score an entire loader
-            out = []
+            out: list[torch.Tensor] = []
             for batch in x:
                 if isinstance(batch, (list, tuple)) and len(batch) >= 1:
                     xb = batch[0]
@@ -265,11 +269,15 @@ class Viyog:
         scores = self.Viyog_Score(centered, Temperature=Temperature)
         return scores
 
-    def score_loader(self, loader: torch.utils.data.DataLoader, Temperature: float = 1000.0) -> torch.Tensor:
+    def score_loader(
+        self,
+        loader: torch.utils.data.DataLoader,
+        Temperature: float = 1000.0,
+    ) -> torch.Tensor:
         """Helper that returns a single 1D tensor of scores for the whole loader."""
         return self.score(loader, Temperature=Temperature)
 
-    def __del__(self):
+    def __del__(self) -> None:
         # ensure hook removed on deletion (best-effort)
         try:
             self.close()
@@ -278,7 +286,11 @@ class Viyog:
 
 
 # ---------------- Viyog Metrics ----------------
-def viyog_metrics(id_scores, ood_scores, recall_level: float = 0.95) -> dict:
+def viyog_metrics(
+    id_scores: Sequence[float],
+    ood_scores: Sequence[float],
+    recall_level: float = 0.95,
+) -> dict[str, Any]:
     """
     Compute a collection of OOD detection metrics from id and ood scores.
 
@@ -291,7 +303,7 @@ def viyog_metrics(id_scores, ood_scores, recall_level: float = 0.95) -> dict:
     recall_level : float, optional
         TPR level for which to compute FPR (default 0.95).
 
-    Returns
+    Returns:
     -------
     dict
         Dictionary with keys "AUROC", "AUPR_IN", "AUPR_OUT", "FPR95", "DetectionError",
@@ -301,10 +313,12 @@ def viyog_metrics(id_scores, ood_scores, recall_level: float = 0.95) -> dict:
     ood_scores = np.asarray(ood_scores)
 
     scores = np.concatenate([id_scores, ood_scores])
-    labels = np.concatenate([
-        np.zeros(len(id_scores)),  # in-distribution -> label 0
-        np.ones(len(ood_scores))   # out-of-distribution -> label 1
-    ])
+    labels = np.concatenate(
+        [
+            np.zeros(len(id_scores)),  # in-distribution -> label 0
+            np.ones(len(ood_scores)),  # out-of-distribution -> label 1
+        ]
+    )
 
     auroc = roc_auc_score(labels, scores)
     aupr_out = average_precision_score(labels, scores)
@@ -323,9 +337,9 @@ def viyog_metrics(id_scores, ood_scores, recall_level: float = 0.95) -> dict:
         tpr = tpr[::-1]
 
     # area under FPR vs threshold
-    aufpr = float(np.trapz(fpr, thresholds))
+    aufpr = float(np.trapezoid(fpr, thresholds))
     # area under (1 - TPR) vs threshold
-    aufnr = float(np.trapz(1.0 - tpr, thresholds))
+    aufnr = float(np.trapezoid(1.0 - tpr, thresholds))
     autc = 0.5 * (aufpr + aufnr)
 
     return {
@@ -335,8 +349,5 @@ def viyog_metrics(id_scores, ood_scores, recall_level: float = 0.95) -> dict:
         "FPR95": float(fpr95),
         "DetectionError": float(det_error),
         "AUTC": float(autc),
-        "AUTC_components": {
-            "AUFPR": float(aufpr),
-            "AUFNR": float(aufnr)
-        }
+        "AUTC_components": {"AUFPR": float(aufpr), "AUFNR": float(aufnr)},
     }

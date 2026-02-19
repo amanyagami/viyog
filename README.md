@@ -1,305 +1,351 @@
-## Viyog
+Below is a revised and corrected version reflecting the key clarification:
 
-**Viyog** is a lightweight **post-hoc technique** that improves the **reliability of machine learning systems** by enhancing **adversarial robustness**, *without requiring adversarial training*.
+* **Primary separation: OOD vs ADV**
+* Not framed as ID vs OOD
+* Testing section removed
+* Language tightened accordingly
 
-### How Viyog Fits In
-
-- **Does not perform OOD or adversarial detection on its own**
-- Operates **after** samples have been flagged by a joint detector  
-  (e.g., **Mahalanobis-based methods**)
-- Helps **separate non–in-distribution (non-ID)** samples  
-  such as **OOD** and **adversarial inputs**
-- Designed to work seamlessly with **pre-trained models**
-
-Once OOD and adversarial samples are identified by an external detector,  
-**Viyog provides an additional signal that helps distinguish and separate them**,  
-improving downstream decision-making and overall system robustness.
-
-
-## Table of contents
-
-- [Key ideas](#key-ideas)
-- [Features](#features)
-- [Repository structure](#repository-structure)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Context manager usage](#context-manager-usage)
-- [Scoring function](#scoring-function)
-- [OOD metrics](#ood-metrics)
-- [Design notes](#design-notes)
-- [Common pitfalls](#common-pitfalls)
-- [Testing suggestions](#testing-suggestions)
-- [Contributing](#contributing)
-- [License](#license)
-- [Citation](#citation)
+You can replace your README with this version.
 
 ---
 
-## Key ideas
+# Viyog
 
-- Early convolutional layers encode low-level structure.
-- ADV samples often produce low activation magnitudes.
-- Measuring and centering per-sample activation norms provides a simple, model-agnostic ADV vs OOD signal.
+<p align="center">
+  <img src="Viyog.png" width="360" alt="Viyog logo"/>
+</p>
 
----
+**Viyog** is a lightweight, post-hoc reliability signal for convolutional neural networks (CNNs).
 
-## Features
+It extracts a simple activation-norm statistic from the **first convolutional layer** and produces a bounded score designed to help separate:
 
-- Automatically finds and hooks the **first convolutional layer**
-  - Prefers `conv1` if present
-  - Falls back to first `Conv1d / Conv2d / Conv3d`
-- Captures activations via forward hooks (no gradients)
-- Computes per-sample **infinity norm** of flattened activations of Training data
-- Training-time baseline via `fit()`
-- Scores batches or full DataLoaders
-- Temperature-scaled, bounded scoring function
-- Safe hook cleanup (manual or context manager)
-- Standard OOD metrics:
-  - AUROC
-  - AUPR (IN / OUT)
-  - FPR\@95% TPR
-  - Detection Error
-  - AUTC
+* **Out-of-Distribution (OOD)** samples
+* **Adversarial (ADV)** samples
+
+Viyog is:
+
+* Model-agnostic
+* Training-free
+* Gradient-free
+* Designed for post-hoc reliability analysis
+
+It requires only forward hooks and does not modify model parameters.
 
 ---
 
-## Repository structure
+# Purpose
+
+OOD and adversarial samples often trigger similar alarms in primary detectors, yet arise from fundamentally different mechanisms:
+
+* **OOD**: distributional shift
+* **ADV**: structured perturbation crafted to manipulate decision boundaries
+
+Viyog provides a lightweight secondary signal that helps distinguish between these two regimes using early-layer activation behavior.
+
+It is intended to be used after a primary detection stage has identified suspicious inputs.
+
+---
+
+# Core Idea
+
+Viyog measures the **infinity norm (max absolute activation)** of the first convolutional layer.
+
+### Intuition
+
+* The first convolutional layer captures low-level structural information.
+* Adversarial perturbations and distributional shifts influence activation magnitudes differently.
+* The maximum absolute activation provides a stable and architecture-independent scalar signal.
+
+### Scoring Pipeline
+
+1. Attach a forward hook to the first convolutional layer.
+
+2. Capture per-sample activations.
+
+3. Flatten activations per sample.
+
+4. Compute the **infinity norm**:
+
+   [
+   |x|_\infty = \max |x_i|
+   ]
+
+5. Compute a training baseline mean via `fit()`.
+
+6. Center new norms by this baseline.
+
+7. Apply temperature-scaled bounded nonlinearity.
+
+Final score range: approximately **(-1, 1)**.
+
+Interpretation (recommended usage):
+
+* Higher score → more likely **OOD**
+* Lower score → more likely **ADV**
+
+---
+
+# Repository Structure
 
 ```
-
-V2/viyog_repo/
+<repo-root>/
+├── .devcontainer/
+├── .github/
+├── .venv/
+├── .vscode/
+├── docker/
+├── docs/
+├── src/
+│   └── viyog/
+│       ├── __init__.py
+│       └── main.py
+├── tests/
+├── pyproject.toml
+├── uv.lock
 ├── README.md
-└── src/
-└── main.py
-
+└── Viyog.png
 ```
 
-All implementation lives in `src/main.py`.
+### Public API
+
+`src/viyog/__init__.py`
+
+```python
+from .main import Viyog, viyog_metrics
+
+__all__ = ["Viyog", "viyog_metrics"]
+```
+
+All implementation resides in:
+
+```
+src/viyog/main.py
+```
 
 ---
 
-## Requirements
+# Installation
 
-- Python 3.8+
-- PyTorch
-- NumPy
-- scikit-learn
+The project uses `pyproject.toml` and `uv`.
 
----
-
-## Installation
-
-Install dependencies:
+## 1. Install uv
 
 ```bash
-pip install torch numpy scikit-learn
+pip install uv
 ```
 
-Make sure the `src/` directory is importable:
+## 2. Clone repository
 
 ```bash
-export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
+git clone <repo-url>
+cd <repo-dir>
 ```
 
-(Alternatively, install the repo in editable mode if packaging files are added.)
+## 3. Create virtual environment
+
+```bash
+uv venv
+```
+
+## 4. Activate environment
+
+macOS / Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+## 5. Install package (editable mode)
+
+```bash
+uv pip install -e .
+```
+
+## 6. Run tests
+
+```bash
+pytest
+```
 
 ---
 
-## Quick start
-
-### 1. Create the wrapper
+# Quick Usage
 
 ```python
-from main import Viyog
+from viyog import Viyog, viyog_metrics
 
-v = Viyog(model)
+v = Viyog(model, device="cuda:0")  # or "cpu"
+
+# Step 1: Fit baseline (required)
+v.fit(train_loader)
+
+# Step 2: Score new samples
+scores = v.score(test_loader)  # torch.Tensor [N]
 ```
 
-Optionally specify a device:
-
-```python
-v = Viyog(model, device="cuda:0")
-```
+Higher score → more likely OOD
+Lower score → more likely ADV
 
 ---
 
-### 2. Fit the training baseline
+# Context Manager (Recommended)
 
 ```python
-v.fit(trainloader)
+with Viyog(model) as v:
+    v.fit(train_loader)
+    ood_scores = v.score(ood_loader)
+    adv_scores = v.score(adv_loader)
+
+metrics = viyog_metrics(
+    ood_scores.cpu().numpy(),
+    adv_scores.cpu().numpy()
+)
+print(metrics)
 ```
 
-This computes and stores the **mean per-sample infinity norm** of the first-layer activations.
-
-> `fit()` **must** be called before `score()`.
+Hooks are automatically removed on exit.
 
 ---
 
-### 3. Score data
+# API Reference
 
-Score a batch:
+## `Viyog(model, device=None)`
 
-```python
-scores = v.score(batch)
-```
+Initializes hook and prepares scoring mechanism.
 
-Score a full DataLoader:
+**Raises:**
 
-```python
-scores = v.score(testloader)
-```
-
-Each call returns a **1D tensor of per-sample scores**.
-
-Higher scores indicate stronger OOD likelihood.
+* `RuntimeError` if no convolutional layer is found.
 
 ---
 
-### 4. Cleanup
+## `fit(train_loader)`
+
+Computes training baseline mean of infinity norms.
+
+Requirements:
+
+* Must be called before `score()`
+* Uses `torch.no_grad()`
+* Sets `model.eval()`
+* Accumulates in CPU float64 for stability
+
+---
+
+## `score(data_loader_or_batch)`
+
+Returns:
 
 ```python
+torch.Tensor  # shape [num_samples]
+```
+
+Raises:
+
+* `RuntimeError` if `fit()` was not called.
+
+---
+
+## `close()`
+
+Manually removes forward hook.
+
+---
+
+## `Viyog.Viyog_Score(centered_norms, Temperature=1000.0)`
+
+Internal scoring transformation that converts centered norms into bounded values.
+
+---
+
+# Metrics
+
+Use:
+
+```python
+viyog_metrics(ood_scores, adv_scores)
+```
+
+### Label Convention Used
+
+| Type | Label |
+| ---- | ----- |
+| OOD  | 1     |
+| ADV  | -1     |
+
+Lower score → more likely ADV
+Higher score → more likely OOD
+
+---
+
+## Returned Metrics
+
+* **AUROC**
+* **AUPR_OOD**
+* **AUPR_ADV**
+* **FPR95**
+* **DetectionError**
+* **AUTC**
+
+  * AUFPR
+  * AUFNR
+
+These follow standard binary detection evaluation procedures.
+
+---
+
+# Design Constraints
+
+* Hook attaches during initialization.
+* Prefers `conv1` attribute if present.
+* Otherwise selects first `Conv1d/2d/3d` layer.
+* The layer must be exercised during forward pass.
+* Only first element of `(inputs, labels)` batches is used.
+* No gradients.
+* No parameter updates.
+* Stateless beyond baseline mean.
+
+---
+
+# Minimal Example
+
+```python
+import torch
+from viyog import Viyog
+
+model = torch.nn.Sequential(
+    torch.nn.Conv2d(3, 4, 3, padding=1),
+    torch.nn.Flatten(),
+    torch.nn.Linear(4 * 32 * 32, 10),
+)
+
+v = Viyog(model, device="cpu")
+
+x = torch.randn(8, 3, 32, 32)
+loader = [(x, None)]
+
+v.fit(loader)
+scores = v.score(loader)
+
+print(scores.shape)  # torch.Size([8])
+
 v.close()
 ```
 
 ---
 
-## Context manager usage
+# License
 
-The wrapper supports safe automatic cleanup:
+This project is licensed under the MIT License.
 
-```python
-from main import Viyog, viyog_metrics
+See the [LICENSE](LICENSE) file for full details.
 
-with Viyog(model) as v:
-    v.fit(trainloader)
+# Citation
 
-    id_scores = v.score(id_loader)
-    ood_scores = v.score(ood_loader)
-
-metrics = viyog_metrics(
-    id_scores.cpu().numpy(),
-    ood_scores.cpu().numpy()
-)
-
-print(metrics)
-```
-
----
-
-## Scoring function
-
-The scoring pipeline is:
-
-1. Capture first-layer activations
-2. Flatten per sample
-3. Compute infinity norm
-4. Center by training mean
-5. Apply temperature-scaled nonlinearity
-
-```python
-Viyog.Viyog_Score(centered_norms, Temperature=1000.0)
-```
-
-Scores are approximately bounded in `(-1, 1)`.
-
----
-
-## OOD metrics
-
-The helper function:
-
-```python
-from main import viyog_metrics
-metrics = viyog_metrics(id_scores, ood_scores)
-```
-
-Returns:
-
-- `AUROC`
-- `AUPR_IN`
-- `AUPR_OUT`
-- `FPR95`
-- `DetectionError`
-- `AUTC`
-- `AUTC_components`
-  - `AUFPR`
-  - `AUFNR`
-
-**Labeling convention**
-
-- In-distribution → label `0`
-- Out-of-distribution → label `1`
-- Higher score → more likely OOD
-
----
-
-## Design notes
-
-- Hook is attached during `Viyog.__init__`
-- Uses `torch.no_grad()` and `model.eval()`
-- Device inferred from model parameters unless specified
-- Accumulation during `fit()` uses CPU float64 for stability
-- Only first element of `(inputs, labels)` batches is used
-
----
-
-## Common pitfalls
-
-- **Calling **``** before **`` Raises a runtime error.
-
-- **No convolutional layer found** The model must contain `Conv1d/2d/3d` or a `conv1` attribute.
-
-- **Hook not capturing features** Ensure the model’s forward pass actually uses the hooked layer.
-
-- **Device mismatch** Explicitly pass `device="cuda:0"` if needed.
-
----
-
-## Testing suggestions
-
-Add tests that verify:
-
-- Hook attachment to `conv1`
-- `fit()` returns a finite mean
-- `score()` returns correct shapes
-- `viyog_metrics()` produces numeric outputs
-
-Example (pytest):
-
-```python
-def test_viyog_basic():
-    import torch
-    from main import Viyog
-    model = torch.nn.Sequential(
-        torch.nn.Conv2d(3, 4, 3, padding=1),
-        torch.nn.Flatten(),
-        torch.nn.Linear(4 * 32 * 32, 10),
-    )
-```
-
----
-
-## Contributing
-
-Contributions are welcome, especially:
-
-- Unit tests and CI
-- Example scripts
-- Documentation improvements
-- Additional scoring variants
-
-Please include a minimal reproducible example when reporting issues.
-
----
-
-## License
-
-No license is currently specified. Add a `LICENSE` file (e.g. MIT or Apache-2.0) to clarify usage and redistribution.
-
----
-
-## Citation
-
-If you use this code in academic work, please cite the associated paper or reference this repository in your methods section.
-
+If Viyog is used in academic work, cite the associated paper or reference this repository in the methods section.

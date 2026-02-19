@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v1.1.0
+_src_path: gh:mjun0812/python-copier-template
+author_email: singh052001aman@gmail.com
+author_name: Aman Singh
+description: A simple tool to seperate Out of distribution and Adversarial Attack
+package_name: viyog
+project_name: viyog
+python_version: '3.10'

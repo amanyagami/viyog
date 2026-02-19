@@ -1,17 +1,25 @@
 # docs/source/conf.py  (replace or merge into your existing conf.py)
 
-import os
 import sys
-sys.path.insert(0, os.path.abspath("../../"))  # repo root so "src" is importable
+from pathlib import Path
+
+# repo root so "src" is importable
+sys.path.insert(0, str(Path(__file__).parents[2].resolve()))  # repo root so "src" is importable
 # If your package root is different, adjust path accordingly (e.g., "../..", "../").
 
-project = "Viyog "
+project = "Viyog"
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.napoleon",
+    "sphinx.ext.napoleon",  # Google / NumPy style docstrings
+    "sphinx.ext.autosummary",  # generate summaries
     "sphinx.ext.viewcode",
-    "sphinx_autodoc_typehints",  # optional but highly recommended
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.doctest",
+    "sphinx.ext.mathjax",
+    "recommonmark",  # if you want to use Markdown (or use myst-parser)
+    "sphinx_rtd_theme",
+    "nbsphinx",  # optional: for Jupyter notebooks in docs
+    "sphinx_gallery.gen_gallery",  # optional: for script -> gallery (sphinx-gallery)
 ]
 
 # autosummary will create .rst files for each listed object under _autosummary/
