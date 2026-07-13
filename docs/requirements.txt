@@ -1,6 +1,2 @@
 sphinx>=7.0
-sphinx-rtd-theme
-sphinx-autodoc-typehints
-sphinxcontrib-napoleon
-numpy
-scikit-learn
+sphinx-rtd-theme>=2.0

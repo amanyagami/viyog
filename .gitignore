@@ -288,3 +288,9 @@ tags
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,visualstudiocode,vim,python,jupyternotebooks,venv,virtualenv
+# packaging / docs build artifacts (added for the viyog PyPI release)
+/dist/
+/build/
+*.egg-info/
+docs/build/
+docs/source/_autosummary/

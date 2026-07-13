@@ -1,21 +1,42 @@
-"""Viyog wrapper + metrics.
+"""Viyog — separating adversarial (ADV) from out-of-distribution (OOD) inputs.
 
-This module provides the :class:`Viyog` wrapper that attaches a forward hook to the
-first convolutional layer of a model to capture early-layer activations, an API to
-fit a per-sample activation norm baseline, and scoring utilities for OOD detection.
+Viyog is a training-free, gradient-free, post-hoc detector. It attaches a forward
+hook to a model's **first convolutional layer** and reads the *dormant-band
+roughness* of that layer's activation map: a magnitude-normalised **total
+variation** (average absolute change between neighbouring pixels) averaged over the
+channels that stay quietest on in-distribution (ID) data.
 
-Recommended usage:
-    v = Viyog(model)
-    v.fit(trainloader)
-    scores = v.score(batch_or_loader)
+The mechanism: gradient-based adversarial attacks inject broadband, high-frequency
+residue into the otherwise-silent first-layer channels, making them spatially
+*jagged*; natural inputs — both ID and OOD — leave those channels *smooth*. So the
+roughness statistic ``V(x)`` is high for ADV inputs and low for everything else,
+which lets a downstream stage tell the two anomaly regimes apart. The detector adds
+no parameters, never touches the backward pass, and stores only ``O(C)`` bytes of
+state (the dormant-channel ranking + one ID mean).
+
+Recommended usage::
+
+    from viyog import Viyog
+
+    v = Viyog(model)            # attaches a hook to the first conv layer
+    v.fit(id_loader)            # one ID pass: learn the dormant band + ID mean
+    scores = v.score(loader)    # per-sample roughness; HIGHER => more adversarial
     v.close()
 
-Or use as a context manager:
+Or as a context manager (deterministic hook cleanup)::
 
     with Viyog(model) as v:
-        v.fit(trainloader)
-        scores = v.score(batch)
+        v.fit(id_loader)
+        adv_scores = v.score(adv_batch)
 
+Direction convention (note it flips from magnitude-based detectors):
+
+* **higher** ``V(x)`` -> more likely **ADV**
+* **lower**  ``V(x)`` -> more likely **OOD** or ID
+
+This module also ships :func:`viyog_metrics`, a small OOD/ADV separability report
+(AUROC / AUPR / FPR@95 / AUTC). It needs ``scikit-learn`` — install the optional
+extra with ``pip install viyog[metrics]``.
 """
 
 from __future__ import annotations
@@ -23,113 +44,100 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-import numpy as np
 import torch
-from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
+
+_EPS = 1e-6  # matches the reference feature extractor (06b_extract_full.py)
 
 
 class Viyog:
-    """
-    Wrapper that captures first-layer activations and computes an activation-norm
-    based score.
+    """Dormant-band roughness detector for separating ADV from OOD inputs.
 
-    The wrapper finds the first convolutional layer of `model` (prefers an attribute
-    named ``conv1`` if present) and registers a forward hook that saves the layer's
-    output for later inspection. Use :meth:`fit` to compute a training baseline
-    (mean infinity-norm of per-sample flattened activations). Then call
-    :meth:`score` or :meth:`score_loader` to compute Viyog scores on new data.
+    The wrapper finds the model's first convolutional layer (preferring an
+    attribute named ``conv1``) and registers a forward hook that captures the
+    layer's output. :meth:`fit` runs one pass over in-distribution data to (a)
+    rank channels by mean activation and select the quietest ``dorm_pct`` of the
+    *alive* channels as the **dormant band**, and (b) record the ID mean of the
+    roughness score. :meth:`score` then returns, per sample, the mean
+    magnitude-normalised total variation over that dormant band — the Viyog
+    statistic ``V(x)``.
 
-    Parameters
-    ----------
-    model : torch.nn.Module
-        The model to wrap. The forward pass must traverse at least one Conv{1,2,3}d
-        module (or provide an attribute named ``conv1``).
-    device : torch.device | str | None, optional
-        Device to use for computation. If ``None`` (default) the device is inferred
-        from model parameters as needed.
+    Args:
+        model: The model to wrap. Its forward pass must traverse at least one
+            ``Conv1d``/``Conv2d``/``Conv3d`` module (or expose an attribute named
+            ``conv1``).
+        device: Device for computation. If ``None`` (default) it is inferred from
+            the model parameters on first use.
+        layer: Optional explicit module (or dotted ``named_modules`` name) to hook
+            instead of the auto-detected first conv layer.
+        dorm_pct: Fraction of *alive* channels, taken from the quiet end, that form
+            the dormant band. Default ``0.10`` (the paper's setting).
+        dead_thresh: Channels whose ID mean absolute activation is at or below this
+            value are treated as permanently dead and excluded from the dormant
+            band (selecting them would make ``V(x)`` a constant 0 and the detector
+            useless — this guards architectures such as DenseNet whose first conv
+            has many dead channels).
 
     Attributes:
-    ----------
-    id_norm_scores_mean : float or None
-        Mean per-sample infinity norm computed by :meth:`fit`. ``None`` until fit
-        completes successfully.
+        dorm_idx_ (torch.Tensor | None): Indices of the dormant-band channels
+            (set by :meth:`fit`).
+        id_profile_ (torch.Tensor | None): Per-channel mean absolute activation on
+            ID data (set by :meth:`fit`).
+        id_score_mean_ (float | None): Mean of ``V(x)`` over the ID fit set; use it
+            to centre scores or pick a threshold. ``None`` until fit completes.
+        n_channels_ (int | None): Number of channels in the hooked layer's output.
+        layer_name_ (str | None): Name of the hooked layer.
     """
 
-    def __init__(self, model: torch.nn.Module, device: torch.device | str | None = None) -> None:
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        device: torch.device | str | None = None,
+        layer: torch.nn.Module | str | None = None,
+        dorm_pct: float = 0.10,
+        dead_thresh: float = 1e-4,
+    ) -> None:
+        if not 0.0 < dorm_pct <= 1.0:
+            raise ValueError(f"dorm_pct must be in (0, 1], got {dorm_pct}")
         self.model = model
-        # device may be provided or inferred later
         self.device = torch.device(device) if device is not None else None
+        self.dorm_pct = float(dorm_pct)
+        self.dead_thresh = float(dead_thresh)
 
-        # state
-        self.id_norm_scores_mean: float | None = None
-        self._hook_layer_name: str | None = None
+        # fitted state
+        self.dorm_idx_: torch.Tensor | None = None
+        self.id_profile_: torch.Tensor | None = None
+        self.id_score_mean_: float | None = None
+        self.n_channels_: int | None = None
+
         self._hook_handle: torch.utils.hooks.RemovableHandle | None = None
-        # will hold last-forward features (detached) while a forward is happening
         self._features: dict[str, torch.Tensor] = {}
 
-        # find conv & attach hook immediately
-        name, layer = self._find_first_conv(self.model)
-        if layer is None:
+        name, mod = self._resolve_layer(model, layer)
+        if mod is None:
             raise RuntimeError("No convolutional layer found to attach hook to.")
-        self._hook_layer_name = name
+        self.layer_name_ = name
 
-        # attach hook that stores a detached tensor on the device of the layer
-        def hook_fn(module: Any, input: Any, output: Any) -> None:
-            # detach to avoid retaining graph; keep on same device for speed
+        def hook_fn(module: Any, inputs: Any, output: Any) -> None:
             self._features["first"] = output.detach()
 
-        self._hook_handle = layer.register_forward_hook(hook_fn)
+        self._hook_handle = mod.register_forward_hook(hook_fn)
 
-    # Context-manager helpers so user can rely on deterministic cleanup
-    def __enter__(self) -> Viyog:
-        return self
-
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        self.close()
-
-    def close(self) -> None:
-        """Remove the hook (call when you no longer need the Viyog wrapper)."""
-        if self._hook_handle is not None:
-            self._hook_handle.remove()
-            self._hook_handle = None
-
+    # ------------------------------------------------------------------ hooks
     @staticmethod
-    def Viyog_Score(num: torch.Tensor, Temperature: float = 1000.0) -> torch.Tensor:
+    def _resolve_layer(
+        module: torch.nn.Module, layer: torch.nn.Module | str | None
+    ) -> tuple[str | None, torch.nn.Module | None]:
+        """Resolve the module to hook: explicit override, then ``conv1``, then the
+        first ``Conv{1,2,3}d`` in ``named_modules`` order.
         """
-        Convert centered norms into bounded scores in approximately (-1, 1).
-
-        Parameters
-        ----------
-        num : torch.Tensor
-            Tensor (any shape) of **centered** norms (i.e., per-sample norm minus
-            training mean). Must be on the same device you want the result on.
-        Temperature : float, optional
-            Temperature scaling factor. Default is 1000.0.
-
-        Returns:
-        -------
-        torch.Tensor
-            Tensor of same shape as ``num`` with values approx in (-1, 1).
-        """
-        num = num / float(Temperature)
-        sign = torch.sign(num)
-        num = torch.exp(torch.abs(num))
-        denom = 1.0 + torch.exp(-num)
-        return sign / denom
-
-    @staticmethod
-    def _find_first_conv(module: torch.nn.Module) -> tuple[str | None, torch.nn.Module | None]:
-        """
-        Find the first convolutional submodule.
-
-        Prefers attribute ``conv1`` if present; otherwise iterates submodules in
-        ``named_modules()`` order and returns the first instance of Conv1d/2d/3d.
-
-        Returns:
-        -------
-        (name, module) or (None, None) if not found
-        """
-        if hasattr(module, "conv1"):
+        if isinstance(layer, torch.nn.Module):
+            return layer.__class__.__name__, layer
+        if isinstance(layer, str):
+            for name, sub in module.named_modules():
+                if name == layer:
+                    return name, sub
+            raise ValueError(f"No submodule named {layer!r} found.")
+        if hasattr(module, "conv1") and isinstance(module.conv1, torch.nn.Module):
             return "conv1", module.conv1
         for name, sub in module.named_modules():
             if name == "":
@@ -138,216 +146,283 @@ class Viyog:
                 return name, sub
         return None, None
 
-    def _ensure_device(self) -> torch.device:
-        """Infer and set :pyattr:`device` if not provided; return the device."""
-        if self.device is None:
-            for p in self.model.parameters():
-                self.device = p.device
-                break
-            if self.device is None:
-                # fallback to CPU if model has no params
-                self.device = torch.device("cpu")
-        return self.device
+    def __enter__(self) -> Viyog:
+        return self
 
-    def _get_first_layer_features(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Run a forward and return the detached features captured by the hook.
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
 
-        Notes:
-        -----
-        - This uses the persistent hook attached in :meth:`__init__`, which writes
-          to ``self._features`` under the key ``"first"``.
-        - The model forward is executed under ``torch.no_grad()`` here to avoid
-          allocating gradients.
-        """
-        # clear any previous feature
-        self._features.pop("first", None)
-        # forward (we assume user won't need gradients)
-        with torch.no_grad():
-            _ = self.model(x)
-        if "first" not in self._features:
-            raise RuntimeError("Hook did not capture features. Check model forward path.")
-        return self._features["first"]
-
-    @torch.no_grad()
-    def fit(self, trainloader: torch.utils.data.DataLoader) -> float:
-        """
-        Compute the mean of per-sample infinity norms of the first-layer activations
-        across the provided trainloader and store it as a Python float.
-
-        Parameters
-        ----------
-        trainloader : torch.utils.data.DataLoader
-            DataLoader providing samples to estimate the mean activation norm. Each
-            yielded batch should be (inputs, labels) or where inputs are the first item.
-
-        Returns:
-        -------
-        float
-            The computed mean per-sample infinity norm (stored in
-            ``self.id_norm_scores_mean``).
-        """
-        device = self._ensure_device()
-        self.model = self.model.to(device)
-        self.model.eval()
-
-        total_sum = 0.0
-        total_count = 0
-        any_batch = False
-
-        for batch in trainloader:
-            any_batch = True
-            # support (inputs, labels) or just inputs
-            if isinstance(batch, (list, tuple)) and len(batch) >= 1:
-                x = batch[0]
-            else:
-                x = batch
-            x = x.to(device)
-            feats = self._get_first_layer_features(x)  # detached tensor
-            B = feats.shape[0]
-            flat = feats.reshape(B, -1)
-            batch_norms = torch.linalg.norm(flat, ord=float("inf"), dim=1)  # (B,)
-            # convert to float64 on CPU for stable accumulation
-            batch_norms = batch_norms.cpu().double()
-            total_sum += float(batch_norms.sum().item())
-            total_count += B
-
-        if not any_batch:
-            raise RuntimeError("Trainloader produced no batches.")
-        mean = float(total_sum / total_count)
-        self.id_norm_scores_mean = mean
-        return self.id_norm_scores_mean
-
-    @torch.no_grad()
-    def score(
-        self,
-        x: torch.Tensor | torch.utils.data.DataLoader,
-        Temperature: float = 1000.0,
-    ) -> torch.Tensor:
-        """
-        If `x` is a Tensor (batch): returns a 1D tensor of scores for that batch.
-        If `x` is a DataLoader: processes entire loader and returns concatenated scores.
-
-        Parameters
-        ----------
-        x : torch.Tensor or torch.utils.data.DataLoader
-            Input batch (tensor) or data loader to score.
-        Temperature : float, optional
-            Temperature scaling factor passed through to :meth:`Viyog_Score`.
-
-        Returns:
-        -------
-        torch.Tensor
-            1D tensor of scores (device equals inferred device).
-        """
-        if self.id_norm_scores_mean is None:
-            raise RuntimeError("Call fit() before score(). id_norm_scores_mean is not set.")
-
-        device = self._ensure_device()
-        self.model = self.model.to(device)
-        self.model.eval()
-
-        if isinstance(x, torch.utils.data.DataLoader):
-            # convenience: score an entire loader
-            out: list[torch.Tensor] = []
-            for batch in x:
-                if isinstance(batch, (list, tuple)) and len(batch) >= 1:
-                    xb = batch[0]
-                else:
-                    xb = batch
-                out.append(self.score(xb, Temperature=Temperature))
-            return torch.cat(out) if len(out) else torch.empty(0, device=device)
-
-        # x is a Tensor (batch)
-        xb = x.to(device)
-        feats = self._get_first_layer_features(xb)
-        B = feats.shape[0]
-        flat = feats.reshape(B, -1)
-        batch_norms = torch.linalg.norm(flat, ord=float("inf"), dim=1)  # (B,) on device
-        # center by training mean (float)
-        centered = batch_norms - float(self.id_norm_scores_mean)
-        scores = self.Viyog_Score(centered, Temperature=Temperature)
-        return scores
-
-    def score_loader(
-        self,
-        loader: torch.utils.data.DataLoader,
-        Temperature: float = 1000.0,
-    ) -> torch.Tensor:
-        """Helper that returns a single 1D tensor of scores for the whole loader."""
-        return self.score(loader, Temperature=Temperature)
+    def close(self) -> None:
+        """Remove the forward hook. Call when the detector is no longer needed."""
+        if self._hook_handle is not None:
+            self._hook_handle.remove()
+            self._hook_handle = None
 
     def __del__(self) -> None:
-        # ensure hook removed on deletion (best-effort)
         try:
             self.close()
         except Exception:
             pass
 
+    # ---------------------------------------------------------------- helpers
+    def _ensure_device(self) -> torch.device:
+        if self.device is None:
+            self.device = next(
+                (p.device for p in self.model.parameters()), torch.device("cpu")
+            )
+        return self.device
 
-# ---------------- Viyog Metrics ----------------
+    def _forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Run one forward pass and return the hooked first-layer activation."""
+        self._features.pop("first", None)
+        with torch.no_grad():
+            self.model(x)
+        if "first" not in self._features:
+            raise RuntimeError("Hook captured no features; check the model forward path.")
+        return self._features["first"]
+
+    @staticmethod
+    def _mean_and_tv(feats: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Per-channel mean |activation| and magnitude-normalised total variation.
+
+        Accepts ``(B, C, H, W)`` conv maps (2-D total variation over H and W) or
+        ``(B, C, L)`` maps (1-D total variation over L, for 1-D signal models).
+
+        Returns:
+            ``(fmean, tv)`` each shaped ``(B, C)``. ``tv`` is the average absolute
+            difference between neighbouring positions, divided by ``fmean`` so it
+            measures *shape* (roughness), not magnitude.
+        """
+        if feats.dim() == 4:
+            absa = feats.abs()
+            fmean = absa.mean(dim=(2, 3))
+            H, W = feats.shape[2], feats.shape[3]
+            if H > 1 and W > 1:
+                dh = (feats[:, :, 1:, :] - feats[:, :, :-1, :]).abs().mean(dim=(2, 3))
+                dw = (feats[:, :, :, 1:] - feats[:, :, :, :-1]).abs().mean(dim=(2, 3))
+                tv = (dh + dw) / (fmean + _EPS)
+            else:
+                tv = torch.zeros_like(fmean)
+        elif feats.dim() == 3:
+            absa = feats.abs()
+            fmean = absa.mean(dim=2)
+            if feats.shape[2] > 1:
+                dl = (feats[:, :, 1:] - feats[:, :, :-1]).abs().mean(dim=2)
+                tv = dl / (fmean + _EPS)
+            else:
+                tv = torch.zeros_like(fmean)
+        else:
+            raise ValueError(
+                f"Expected a 3-D or 4-D activation map, got shape {tuple(feats.shape)}"
+            )
+        return fmean, tv
+
+    @staticmethod
+    def _batch_x(batch: Any) -> torch.Tensor:
+        """Extract the input tensor from a ``(inputs, ...)`` batch or a raw tensor."""
+        if isinstance(batch, (list, tuple)) and len(batch) >= 1:
+            return batch[0]
+        return batch
+
+    # -------------------------------------------------------------------- fit
+    @torch.no_grad()
+    def fit(self, id_loader: torch.utils.data.DataLoader) -> Viyog:
+        """Learn the dormant band and the ID roughness mean from ID data.
+
+        Runs a single pass over ``id_loader`` accumulating the per-channel mean
+        absolute activation (to rank channels and pick the dormant band) and the
+        per-channel mean total variation (to record the ID mean of ``V(x)``).
+
+        Args:
+            id_loader: Iterable of in-distribution batches. Each batch may be a
+                tensor or a ``(inputs, labels)`` tuple — only the inputs are used.
+
+        Returns:
+            ``self`` (so calls can be chained).
+
+        Raises:
+            RuntimeError: If the loader yields no batches.
+        """
+        device = self._ensure_device()
+        self.model = self.model.to(device)
+        self.model.eval()
+
+        sum_fmean: torch.Tensor | None = None
+        sum_tv: torch.Tensor | None = None
+        count = 0
+
+        for batch in id_loader:
+            x = self._batch_x(batch).to(device)
+            feats = self._forward_features(x)
+            fmean, tv = self._mean_and_tv(feats)
+            if sum_fmean is None:
+                sum_fmean = fmean.sum(dim=0).double()
+                sum_tv = tv.sum(dim=0).double()
+            else:
+                sum_fmean += fmean.sum(dim=0).double()
+                sum_tv += tv.sum(dim=0).double()
+            count += fmean.shape[0]
+
+        if count == 0 or sum_fmean is None:
+            raise RuntimeError("id_loader produced no batches.")
+
+        profile = (sum_fmean / count).float()  # (C,) mean |act| per channel
+        mean_tv = (sum_tv / count).float()      # (C,) mean TV per channel
+        C = profile.numel()
+        self.n_channels_ = int(C)
+        self.id_profile_ = profile
+
+        alive = torch.nonzero(profile > self.dead_thresh, as_tuple=False).flatten()
+        if alive.numel() == 0:
+            alive = torch.arange(C, device=profile.device)
+        alive_sorted = alive[torch.argsort(profile[alive])]  # quiet -> loud
+        n_low = max(1, int(alive.numel() * self.dorm_pct))
+        self.dorm_idx_ = alive_sorted[:n_low].clone()
+
+        self.id_score_mean_ = float(mean_tv[self.dorm_idx_].mean().item())
+        return self
+
+    # ------------------------------------------------------------------ score
+    @torch.no_grad()
+    def score(
+        self,
+        x: torch.Tensor | torch.utils.data.DataLoader,
+        center: bool = False,
+    ) -> torch.Tensor:
+        """Per-sample dormant-band roughness ``V(x)``.
+
+        If ``x`` is a batch tensor, returns a 1-D tensor of scores for that batch.
+        If ``x`` is a ``DataLoader`` (or any iterable of batches), scores the whole
+        thing and returns the concatenation.
+
+        Args:
+            x: Input batch or data loader.
+            center: If ``True``, subtract the ID mean recorded by :meth:`fit`
+                (``id_score_mean_``). Centering is monotonic, so it does not change
+                AUROC — it only shifts scores so that ID sits near 0.
+
+        Returns:
+            1-D ``torch.Tensor`` of scores on the inferred device. **Higher means
+            more adversarial.**
+
+        Raises:
+            RuntimeError: If :meth:`fit` has not been called.
+        """
+        if self.dorm_idx_ is None:
+            raise RuntimeError("Call fit() before score().")
+
+        device = self._ensure_device()
+        self.model = self.model.to(device)
+        self.model.eval()
+
+        if isinstance(x, torch.Tensor):
+            feats = self._forward_features(x.to(device))
+            _, tv = self._mean_and_tv(feats)
+            dorm = self.dorm_idx_.to(tv.device)
+            v = tv.index_select(1, dorm).mean(dim=1)
+            if center and self.id_score_mean_ is not None:
+                v = v - self.id_score_mean_
+            return v
+
+        # iterable of batches / DataLoader
+        out: list[torch.Tensor] = []
+        for batch in x:
+            out.append(self.score(self._batch_x(batch), center=center))
+        return torch.cat(out) if out else torch.empty(0, device=device)
+
+    def score_loader(
+        self, loader: torch.utils.data.DataLoader, center: bool = False
+    ) -> torch.Tensor:
+        """Score an entire loader and return a single 1-D tensor. See :meth:`score`."""
+        return self.score(loader, center=center)
+
+    # --------------------------------------------------------- optional squash
+    @staticmethod
+    def bounded_score(scores: torch.Tensor, temperature: float = 1.0) -> torch.Tensor:
+        """Optional monotone squash of raw scores into ``(0, 1)``.
+
+        A convenience for thresholding / display only. Because the transform is
+        strictly monotonic, the AUROC of the squashed scores equals that of the raw
+        scores. Not applied by :meth:`score`; call it explicitly if you want a
+        bounded output.
+
+        Args:
+            scores: Raw (ideally ID-centered) ``V(x)`` scores.
+            temperature: Larger values make the transition gentler.
+
+        Returns:
+            Tensor of the same shape with values in ``(0, 1)``.
+        """
+        return torch.sigmoid(scores / float(temperature))
+
+
+# ---------------------------------------------------------------------------
+# Metrics (optional: needs scikit-learn — `pip install viyog[metrics]`)
+# ---------------------------------------------------------------------------
 def viyog_metrics(
-    id_scores: Sequence[float],
     ood_scores: Sequence[float],
+    adv_scores: Sequence[float],
     recall_level: float = 0.95,
 ) -> dict[str, Any]:
-    """
-    Compute a collection of OOD detection metrics from id and ood scores.
+    """Separability report for two score populations (default task: OOD vs ADV).
 
-    Parameters
-    ----------
-    id_scores : array-like
-        Scores for in-distribution examples (lower means ID in the code's labeling).
-    ood_scores : array-like
-        Scores for OOD examples.
-    recall_level : float, optional
-        TPR level for which to compute FPR (default 0.95).
+    Labels the second population as positive (``1``) and the first as negative
+    (``0``), then reports threshold-free and threshold-based separability. With the
+    Viyog convention (higher ``V(x)`` => more adversarial), pass ``ood_scores`` and
+    ``adv_scores`` so that "positive" means ADV; the report is symmetric, so any two
+    populations work (e.g. ID vs ADV).
+
+    Args:
+        ood_scores: Scores for the negative class (e.g. OOD or ID).
+        adv_scores: Scores for the positive class (e.g. ADV).
+        recall_level: TPR level at which to report FPR (default ``0.95``).
 
     Returns:
-    -------
-    dict
-        Dictionary with keys "AUROC", "AUPR_IN", "AUPR_OUT", "FPR95", "DetectionError",
-        "AUTC" and "AUTC_components".
-    """
-    id_scores = np.asarray(id_scores)
-    ood_scores = np.asarray(ood_scores)
+        Dict with ``AUROC``, ``AUPR_IN``, ``AUPR_OUT``, ``FPR95``,
+        ``DetectionError``, ``AUTC`` and ``AUTC_components`` (``AUFPR``/``AUFNR``).
 
-    scores = np.concatenate([id_scores, ood_scores])
-    labels = np.concatenate(
-        [
-            np.zeros(len(id_scores)),  # in-distribution -> label 0
-            np.ones(len(ood_scores)),  # out-of-distribution -> label 1
-        ]
-    )
+    Raises:
+        ImportError: If scikit-learn is not installed.
+    """
+    try:
+        import numpy as np
+        from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
+    except ImportError as exc:  # pragma: no cover - trivial guard
+        raise ImportError(
+            "viyog_metrics needs scikit-learn. Install it with: "
+            "pip install 'viyog[metrics]'"
+        ) from exc
+
+    neg = np.asarray(ood_scores, dtype=np.float64)
+    pos = np.asarray(adv_scores, dtype=np.float64)
+    scores = np.concatenate([neg, pos])
+    labels = np.concatenate([np.zeros(len(neg)), np.ones(len(pos))])
 
     auroc = roc_auc_score(labels, scores)
     aupr_out = average_precision_score(labels, scores)
     aupr_in = average_precision_score(1 - labels, -scores)
 
     fpr, tpr, thresholds = roc_curve(labels, scores)
-    # FPR@95%TPR
-    fpr95 = fpr[np.searchsorted(tpr, recall_level)]
-    det_error = np.min(0.5 * (fpr + (1 - tpr)))
+    idx = int(np.searchsorted(tpr, recall_level))
+    fpr95 = float(fpr[min(idx, len(fpr) - 1)])
+    det_error = float(np.min(0.5 * (fpr + (1 - tpr))))
 
-    # ---------------- AUTC (pytorch-ood style) ----------------
-    # sklearn returns thresholds in decreasing order -> flip to ascending
-    if thresholds[0] > thresholds[-1]:
-        thresholds = thresholds[::-1]
-        fpr = fpr[::-1]
-        tpr = tpr[::-1]
-
-    # area under FPR vs threshold
-    aufpr = float(np.trapezoid(fpr, thresholds))
-    # area under (1 - TPR) vs threshold
-    aufnr = float(np.trapezoid(1.0 - tpr, thresholds))
+    # AUTC (pytorch-ood style). sklearn prepends an infinite threshold; drop the
+    # non-finite entries so the trapezoidal integral stays finite.
+    finite = np.isfinite(thresholds)
+    th, f_, t_ = thresholds[finite], fpr[finite], tpr[finite]
+    if len(th) > 1 and th[0] > th[-1]:
+        th, f_, t_ = th[::-1], f_[::-1], t_[::-1]
+    aufpr = float(np.trapezoid(f_, th)) if len(th) > 1 else 0.0
+    aufnr = float(np.trapezoid(1.0 - t_, th)) if len(th) > 1 else 0.0
     autc = 0.5 * (aufpr + aufnr)
 
     return {
         "AUROC": float(auroc),
         "AUPR_IN": float(aupr_in),
         "AUPR_OUT": float(aupr_out),
-        "FPR95": float(fpr95),
-        "DetectionError": float(det_error),
+        "FPR95": fpr95,
+        "DetectionError": det_error,
         "AUTC": float(autc),
-        "AUTC_components": {"AUFPR": float(aufpr), "AUFNR": float(aufnr)},
+        "AUTC_components": {"AUFPR": aufpr, "AUFNR": aufnr},
     }

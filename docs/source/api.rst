@@ -5,6 +5,5 @@ API Reference
    :toctree: _autosummary
    :nosignatures:
 
-   src.main.Viyog
-   src.main.viyog_metrics
-``
+   viyog.Viyog
+   viyog.viyog_metrics

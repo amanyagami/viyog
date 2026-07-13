@@ -1,25 +1,61 @@
 [project]
 name = "viyog"
-version = "0.0.1"
-description = "A simple tool to seperate Out of distribution and Adversarial Attack"
+dynamic = ["version"]
+description = "Training-free, gradient-free detector that separates adversarial (ADV) from out-of-distribution (OOD) inputs via first-layer dormant-band roughness."
 readme = "README.md"
 authors = [{ name = "Aman Singh", email = "singh052001aman@gmail.com" }]
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = [
-    "numpy>=2.2.6",
-    "pytest>=9.0.2",
-    "torch>=2.10.0",
+keywords = [
+    "out-of-distribution",
+    "ood-detection",
+    "adversarial-detection",
+    "robustness",
+    "safety",
+    "pytorch",
+    "deep-learning",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.23",
+]
+
+[project.optional-dependencies]
+metrics = ["scikit-learn>=1.1"]
+
+[project.urls]
+Homepage = "https://github.com/amanyagami/viyog"
+Repository = "https://github.com/amanyagami/viyog"
+Documentation = "https://viyog.readthedocs.io"
+Issues = "https://github.com/amanyagami/viyog/issues"
+Changelog = "https://github.com/amanyagami/viyog/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "src/viyog/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/viyog"]
 
+[tool.hatch.build.targets.sdist]
+include = ["src/viyog", "README.md", "LICENSE"]
+
 [dependency-groups]
-dev = ["pre-commit>=4.2.0", "pytest>=8.4.0", "ruff>=0.11.12"]
+dev = ["pre-commit>=4.2.0", "pytest>=8.4.0", "ruff>=0.11.12", "scikit-learn>=1.1"]
 
 [tool.ruff]
 line-length = 100

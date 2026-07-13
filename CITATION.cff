@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Viyog, please cite the paper below."
+title: "Viyog: a training-free first-layer detector separating adversarial from out-of-distribution inputs"
+type: software
+authors:
+  - family-names: Singh
+    given-names: Aman
+    email: singh052001aman@gmail.com
+license: MIT
+repository-code: "https://github.com/amanyagami/viyog"
+url: "https://pypi.org/project/viyog/"
+keywords:
+  - out-of-distribution detection
+  - adversarial detection
+  - robustness
+  - pytorch
+preferred-citation:
+  type: conference-paper
+  title: "Viyog: Separating Adversarial and Out-of-Distribution"
+  authors:
+    - family-names: Singh
+      given-names: Aman
+  year: 2026

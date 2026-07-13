@@ -1,351 +1,132 @@
-Below is a revised and corrected version reflecting the key clarification:
-
-* **Primary separation: OOD vs ADV**
-* Not framed as ID vs OOD
-* Testing section removed
-* Language tightened accordingly
-
-You can replace your README with this version.
-
----
-
 # Viyog
 
-<p align="center">
-  <img src="Viyog.png" width="360" alt="Viyog logo"/>
-</p>
+[![PyPI](https://img.shields.io/pypi/v/viyog.svg)](https://pypi.org/project/viyog/)
+[![Python](https://img.shields.io/pypi/pyversions/viyog.svg)](https://pypi.org/project/viyog/)
+[![Downloads](https://static.pepy.tech/badge/viyog)](https://pepy.tech/project/viyog)
+[![Docs](https://readthedocs.org/projects/viyog/badge/?version=latest)](https://viyog.readthedocs.io/en/latest/)
+[![Tests](https://github.com/amanyagami/viyog/actions/workflows/test.yml/badge.svg)](https://github.com/amanyagami/viyog/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
 
-**Viyog** is a lightweight, post-hoc reliability signal for convolutional neural networks (CNNs).
+**Separate adversarial (ADV) inputs from out-of-distribution (OOD) inputs — in one forward pass, with no training and no gradients.**
 
-It extracts a simple activation-norm statistic from the **first convolutional layer** and produces a bounded score designed to help separate:
+Safety-critical systems must respond *differently* to two kinds of anomaly: OOD
+inputs call for **abstention**, adversarial inputs demand **rejection**. Standard
+detectors collapse both into a single anomaly score and cannot tell them apart.
+Viyog is a training-free, post-hoc second stage that makes the distinction by
+reading the **dormant-band roughness** of a model's first convolutional layer.
 
-* **Out-of-Distribution (OOD)** samples
-* **Adversarial (ADV)** samples
+The idea: gradient-based attacks inject broadband high-frequency residue into the
+first-layer channels that are otherwise *quiet* on in-distribution data, making
+them spatially jagged. Natural inputs — both ID and OOD — leave those channels
+smooth. Viyog measures that roughness as a single scalar `V(x)`:
 
-Viyog is:
+* **higher `V(x)` → more likely ADV**
+* **lower `V(x)` → more likely OOD / ID**
 
-* Model-agnostic
-* Training-free
-* Gradient-free
-* Designed for post-hoc reliability analysis
+It adds no parameters, never touches the backward pass, and stores only `O(C)`
+bytes of state (the dormant-channel ranking + one ID mean) — roughly **0.3 KB**,
+versus 4.5–40 MB for feature-distance detectors such as Mahalanobis / KNN / ViM.
 
-It requires only forward hooks and does not modify model parameters.
+## Install
 
----
-
-# Purpose
-
-OOD and adversarial samples often trigger similar alarms in primary detectors, yet arise from fundamentally different mechanisms:
-
-* **OOD**: distributional shift
-* **ADV**: structured perturbation crafted to manipulate decision boundaries
-
-Viyog provides a lightweight secondary signal that helps distinguish between these two regimes using early-layer activation behavior.
-
-It is intended to be used after a primary detection stage has identified suspicious inputs.
-
----
-
-# Core Idea
-
-Viyog measures the **infinity norm (max absolute activation)** of the first convolutional layer.
-
-### Intuition
-
-* The first convolutional layer captures low-level structural information.
-* Adversarial perturbations and distributional shifts influence activation magnitudes differently.
-* The maximum absolute activation provides a stable and architecture-independent scalar signal.
-
-### Scoring Pipeline
-
-1. Attach a forward hook to the first convolutional layer.
-
-2. Capture per-sample activations.
-
-3. Flatten activations per sample.
-
-4. Compute the **infinity norm**:
-
-   [
-   |x|_\infty = \max |x_i|
-   ]
-
-5. Compute a training baseline mean via `fit()`.
-
-6. Center new norms by this baseline.
-
-7. Apply temperature-scaled bounded nonlinearity.
-
-Final score range: approximately **(-1, 1)**.
-
-Interpretation (recommended usage):
-
-* Higher score → more likely **OOD**
-* Lower score → more likely **ADV**
-
----
-
-# Repository Structure
-
-```
-<repo-root>/
-├── .devcontainer/
-├── .github/
-├── .venv/
-├── .vscode/
-├── docker/
-├── docs/
-├── src/
-│   └── viyog/
-│       ├── __init__.py
-│       └── main.py
-├── tests/
-├── pyproject.toml
-├── uv.lock
-├── README.md
-└── Viyog.png
+```bash
+pip install viyog                 # core: torch + numpy
+pip install "viyog[metrics]"      # + scikit-learn, for viyog_metrics()
 ```
 
-### Public API
-
-`src/viyog/__init__.py`
+## Quickstart
 
 ```python
-from .main import Viyog, viyog_metrics
+from viyog import Viyog
 
-__all__ = ["Viyog", "viyog_metrics"]
+v = Viyog(model)          # attaches a forward hook to the first conv layer
+v.fit(id_loader)          # one ID pass: learn the dormant band + ID mean
+scores = v.score(loader)  # per-sample roughness V(x); HIGHER => more adversarial
+v.close()
 ```
 
-All implementation resides in:
-
-```
-src/viyog/main.py
-```
-
----
-
-# Installation
-
-The project uses `pyproject.toml` and `uv`.
-
-## 1. Install uv
-
-```bash
-pip install uv
-```
-
-## 2. Clone repository
-
-```bash
-git clone <repo-url>
-cd <repo-dir>
-```
-
-## 3. Create virtual environment
-
-```bash
-uv venv
-```
-
-## 4. Activate environment
-
-macOS / Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Windows (PowerShell):
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-## 5. Install package (editable mode)
-
-```bash
-uv pip install -e .
-```
-
-## 6. Run tests
-
-```bash
-pytest
-```
-
----
-
-# Quick Usage
+Or as a context manager (hooks are removed automatically):
 
 ```python
 from viyog import Viyog, viyog_metrics
 
-v = Viyog(model, device="cuda:0")  # or "cpu"
-
-# Step 1: Fit baseline (required)
-v.fit(train_loader)
-
-# Step 2: Score new samples
-scores = v.score(test_loader)  # torch.Tensor [N]
-```
-
-Higher score → more likely OOD
-Lower score → more likely ADV
-
----
-
-# Context Manager (Recommended)
-
-```python
 with Viyog(model) as v:
-    v.fit(train_loader)
+    v.fit(id_loader)
     ood_scores = v.score(ood_loader)
     adv_scores = v.score(adv_loader)
 
-metrics = viyog_metrics(
-    ood_scores.cpu().numpy(),
-    adv_scores.cpu().numpy()
-)
-print(metrics)
+# separability report (OOD vs ADV): AUROC / AUPR / FPR@95 / AUTC
+print(viyog_metrics(ood_scores.cpu().numpy(), adv_scores.cpu().numpy()))
 ```
 
-Hooks are automatically removed on exit.
+### With a real model (timm)
 
----
-
-# API Reference
-
-## `Viyog(model, device=None)`
-
-Initializes hook and prepares scoring mechanism.
-
-**Raises:**
-
-* `RuntimeError` if no convolutional layer is found.
-
----
-
-## `fit(train_loader)`
-
-Computes training baseline mean of infinity norms.
-
-Requirements:
-
-* Must be called before `score()`
-* Uses `torch.no_grad()`
-* Sets `model.eval()`
-* Accumulates in CPU float64 for stability
-
----
-
-## `score(data_loader_or_batch)`
-
-Returns:
+Viyog auto-detects the first conv layer (`resnet50.conv1` here), so any
+`torch.nn.Module` works out of the box:
 
 ```python
-torch.Tensor  # shape [num_samples]
-```
-
-Raises:
-
-* `RuntimeError` if `fit()` was not called.
-
----
-
-## `close()`
-
-Manually removes forward hook.
-
----
-
-## `Viyog.Viyog_Score(centered_norms, Temperature=1000.0)`
-
-Internal scoring transformation that converts centered norms into bounded values.
-
----
-
-# Metrics
-
-Use:
-
-```python
-viyog_metrics(ood_scores, adv_scores)
-```
-
-### Label Convention Used
-
-| Type | Label |
-| ---- | ----- |
-| OOD  | 1     |
-| ADV  | -1     |
-
-Lower score → more likely ADV
-Higher score → more likely OOD
-
----
-
-## Returned Metrics
-
-* **AUROC**
-* **AUPR_OOD**
-* **AUPR_ADV**
-* **FPR95**
-* **DetectionError**
-* **AUTC**
-
-  * AUFPR
-  * AUFNR
-
-These follow standard binary detection evaluation procedures.
-
----
-
-# Design Constraints
-
-* Hook attaches during initialization.
-* Prefers `conv1` attribute if present.
-* Otherwise selects first `Conv1d/2d/3d` layer.
-* The layer must be exercised during forward pass.
-* Only first element of `(inputs, labels)` batches is used.
-* No gradients.
-* No parameter updates.
-* Stateless beyond baseline mean.
-
----
-
-# Minimal Example
-
-```python
-import torch
+import torch, timm
 from viyog import Viyog
 
-model = torch.nn.Sequential(
-    torch.nn.Conv2d(3, 4, 3, padding=1),
-    torch.nn.Flatten(),
-    torch.nn.Linear(4 * 32 * 32, 10),
-)
+model = timm.create_model("resnet50", pretrained=True, num_classes=10).eval()
 
-v = Viyog(model, device="cpu")
-
-x = torch.randn(8, 3, 32, 32)
-loader = [(x, None)]
-
-v.fit(loader)
-scores = v.score(loader)
-
-print(scores.shape)  # torch.Size([8])
-
-v.close()
+with Viyog(model) as v:
+    v.fit(id_loader)                 # your in-distribution DataLoader
+    print(v.layer_name_, v.n_channels_, v.dorm_idx_.numel())   # conv1 64 6
+    adv_scores = v.score(suspect_loader)   # higher V(x) => more adversarial
 ```
 
----
+Pass `device="cuda:0"` for GPU, or `layer=<module or dotted name>` to hook a
+specific layer instead of the auto-detected first conv.
 
-# License
+## How it works
 
-This project is licensed under the MIT License.
+For each input, Viyog hooks the first conv layer's activation map `a` of shape
+`(B, C, H, W)` and computes, per channel, a **magnitude-normalised total
+variation** (average absolute change between neighbouring pixels):
 
-See the [LICENSE](LICENSE) file for full details.
+```
+tv = (|Δ_h a| + |Δ_w a|) / (mean|a| + eps)      # spatial roughness, per channel
+V(x) = mean over the dormant channels of tv     # the Viyog score
+```
 
-# Citation
+The **dormant band** is the quietest `dorm_pct` (default 10%) of channels ranked
+by their mean absolute activation on ID data, restricted to *alive* channels
+(permanently-dead channels — common in e.g. DenseNet first convs — are excluded so
+the statistic stays meaningful). `.fit()` learns that band and the ID mean of `V`
+in a single pass; `.score()` returns `V(x)` for new inputs.
 
-If Viyog is used in academic work, cite the associated paper or reference this repository in the methods section.
+`Conv2d` maps use 2-D total variation; `Conv1d` maps `(B, C, L)` use 1-D total
+variation, so the detector also applies to 1-D signal models.
+
+## API
+
+| | |
+| --- | --- |
+| `Viyog(model, device=None, layer=None, dorm_pct=0.10, dead_thresh=1e-4)` | Wrap a model; auto-detects the first conv layer (prefers a `conv1` attribute). Pass `layer=` (module or dotted name) to override. |
+| `.fit(id_loader) -> self` | One ID pass: selects the dormant band, records `id_score_mean_`. |
+| `.score(x, center=False) -> Tensor` | Per-sample `V(x)` for a batch **or** a whole loader. Higher = more adversarial. `center=True` subtracts the ID mean (monotone; AUROC-preserving). |
+| `.score_loader(loader, center=False)` | Convenience wrapper over a loader. |
+| `Viyog.bounded_score(scores, temperature=1.0)` | Optional monotone squash to `(0, 1)` for thresholding/display. |
+| `.close()` / context manager | Remove the forward hook. |
+| `viyog_metrics(neg, adv, recall_level=0.95)` | AUROC / AUPR_IN / AUPR_OUT / FPR95 / DetectionError / AUTC for two score populations. Needs `viyog[metrics]`. |
+
+Fitted attributes: `dorm_idx_`, `id_profile_`, `id_score_mean_`, `n_channels_`,
+`layer_name_`.
+
+## Results
+
+Across 20 architectures on CIFAR-100 (ResNet/DenseNet/ConvNeXt/Swin/ViT and edge
+backbones), the dormant-band roughness score reaches **AUROC ≈ 0.966 for adversarial
+detection (ID vs ADV)** and **≈ 0.824 for OOD vs ADV** — where logit detectors
+(Energy/MSP/MaxLogit/GEN) are near-blind to adversarials (≤ 0.69) and feature-distance
+detectors cost 4.5–40 MB of state versus Viyog's ~0.3 KB. See the accompanying paper.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+## Citation
+
+If you use Viyog in academic work, please cite the accompanying paper
+*"Viyog: Separating Adversarial and Out-of-Distribution."*
