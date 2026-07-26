@@ -1,0 +1,89 @@
+Status
+======
+
+Badges applied for: Available, Reviewed, Reproducible.
+
+Available
+---------
+The code (the `viyog` PyPI package, its full reproduction pipeline in
+experiments/, the paper source in paper_rev/, and an interactive
+leaderboard in demo/) is public, MIT-licensed (LICENSE), and archived at a
+persistent, version-specific DOI (see the HotCRP submission for the exact
+DOI/URL). It includes the five required documentation files (README,
+REQUIREMENTS, STATUS, LICENSE, INSTALL) and is reasonable and complete: it
+installs cleanly from PyPI (`pip install viyog`) and from source (`uv
+sync`), and every claim in the paper maps to a specific script and a
+specific command in README/INSTALL.
+
+Reviewed
+--------
+The artifact runs and produces the outputs it describes:
+  - `pytest tests/` passes (12/12) against the installed package.
+  - `examples/quickstart.py --smoke` runs the packaged `Viyog` detector
+    end-to-end on synthetic data and prints the three separation AUROCs the
+    README documents.
+  - Every script referenced in INSTALL was executed during artifact
+    preparation and produces the file/output documented there.
+
+Reproducible
+------------
+An independent party can regenerate the paper's core computational result
+using the author-created research objects (the fine-tuned checkpoints),
+methods (the packaged Viyog detector plus the experiments/ pipeline), and
+conditions of analysis (the same public benchmark datasets, the same attack
+library, the same signature computation) described in the paper -- not by
+replaying a precomputed result.
+
+Concretely, Tier T1 in README/INSTALL:
+  1. fetches the 6 core-model checkpoints from a public HuggingFace repo
+     (`amanyagami/viyog-weights` -- these are the "author-created research
+     objects" the Reproducible badge definition refers to; nothing
+     downstream of them is precomputed or shipped),
+  2. downloads CIFAR-100 and the OOD benchmark sets via torchvision's
+     standard public mirrors,
+  3. regenerates adversarial examples live via `torchattacks` (FGSM, BIM,
+     PGD, APGD-CE),
+  4. extracts first-conv activation features with a single forward pass per
+     batch,
+  5. recomputes every candidate detection signature's AUROC from those
+     features, including the exact statistic (`tv`, magnitude-normalised
+     total variation) that ships in `src/viyog/main.py` -- the same formula,
+     verified line-for-line against `experiments/06b_extract_full.py`'s
+     reference extractor,
+  6. and reproduces the paper's headline numbers (`ViyogD_tv_dorm`:
+     T2 AUROC ~0.966, T3 AUROC ~0.824, 0.28 KB detector state).
+
+This was executed end-to-end during artifact preparation on a single CUDA
+GPU (an H200); see REQUIREMENTS for what hardware a reviewer needs and
+INSTALL for the exact commands and expected outputs.
+
+What this artifact does not claim
+-------------------------------------
+- Tier T3 (re-finetuning all 20 backbones from raw ImageNet weights) is
+  GPU-weeks of compute and is documented but explicitly out of scope --
+  this does not weaken the Reproducible claim above, which rests on T1.
+- The full 20-architecture, 3-ID-dataset sweep (Tier T2) is available and
+  was run during development, but is offered as additional evidence, not as
+  part of the required reproduction path.
+- One dataset variant (GTSRB) has an analysis file
+  (`results/gtsrb/analysis/baselines_feature_gtsrb.csv`) that is currently
+  empty on the development machine due to an unrelated data-pipeline gap;
+  this affects only the GTSRB row of the extended (T2) multi-dataset
+  comparison, not the required cifar100 T1 tier.
+
+Known, disclosed limitation (fixed, not hidden)
+----------------------------------------------------
+During artifact preparation, a bug was found in the systems/efficiency
+measurement code (`eval_systems.py`, `eval_detector_cost.py`): a hand-rolled
+MAC-counting hook undercounted full-model compute on attention-based and
+per-position-Linear architectures (ViT, Swin, ConvNeXtV2, EdgeNeXt) by
+10-100x, because it only instrumented Conv2d/Linear layers. This was caught
+via a cross-check against `fvcore`'s trace-based FlopCountAnalysis, fixed
+(fvcore is now the default, the old hook is kept as an audit-trail column),
+and the affected downstream data (`results/analysis/systems_cifar100.csv`,
+`detector_cost_compute.csv`, `master_comparison_{cifar100,cifar10}.csv`,
+and the live demo leaderboard's compute-cost column) was regenerated. The
+direction of the original error was conservative -- it understated Viyog's
+efficiency advantage on those four architectures, not the reverse -- and it
+does not affect any detection-accuracy number (T1/T2/T3 AUROC, state
+memory) reported elsewhere in the paper or this artifact.

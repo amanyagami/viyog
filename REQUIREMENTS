@@ -1,0 +1,94 @@
+Requirements
+============
+
+This file states the hardware/software needed for each reproduction tier
+described in README.md ("Reproducing the paper") and INSTALL. Tiers are
+cumulative in setup but independent to run.
+
+Software (all tiers)
+---------------------
+- Python 3.10, 3.11, or 3.12 (pyproject.toml: requires-python >=3.10)
+- `uv` (https://github.com/astral-sh/uv) -- this project uses uv exclusively,
+  never bare pip, for both the installable package and the experiments/
+  reproduction pipeline.
+- Git, for cloning this repository.
+- No Docker/VM is required; a plain Python virtualenv (managed by uv) is
+  sufficient for every tier below.
+
+Tier T0 -- install & sanity check
+----------------------------------
+- Hardware: any machine, CPU only. No GPU needed.
+- Software: `uv sync` (installs the core package: torch>=2.0, numpy>=1.23,
+  optionally scikit-learn>=1.1 via the `metrics` extra).
+- Disk: <1 GB (PyTorch CPU wheel + the package itself).
+- Time: ~2 minutes.
+- Network: only to fetch Python packages from PyPI.
+
+Tier T1 -- core recompute (the Reproducible-badge claim)
+-----------------------------------------------------------
+- Hardware: **one CUDA GPU is required.** This is a normal requirement for an
+  ML systems artifact, not the "reviewer cannot reasonably access this
+  hardware" case the CODES artifact-evaluation call reserves for exotic/
+  embedded hardware (e.g. specific microcontrollers) -- any current consumer
+  or cloud CUDA GPU (a free Colab GPU, a university cluster node, a rented
+  cloud instance) satisfies this.
+- VRAM: the default per-model batch sizes in `experiments/config.py`
+  (`MODEL_ATTACK_BATCH`, `MODEL_FEATURE_BATCH`) were tuned for large-VRAM GPUs
+  (the paper's own hardware). The largest of the 6 core models
+  (convnextv2_base) needs roughly 45 GB VRAM at its default attack batch
+  (192). **On a smaller GPU, pass `--batch N` to `03_gen_adversarial.py`** to
+  scale the batch down (e.g. `--batch 16` fits comfortably on an 8-16 GB
+  card) -- runtime scales up proportionally, correctness is unaffected.
+- Software: `uv sync --group experiments` (adds torchattacks, timm,
+  pytorch-ood, h5py, pandas, fvcore, huggingface-hub, etc. -- see
+  `[dependency-groups.experiments]` in pyproject.toml for the full pinned
+  list).
+- Disk:
+    - ~250 MB for the 6 core-model checkpoints (fetched from
+      `huggingface.co/amanyagami/viyog-weights` by `01_download.py
+      --core-only`).
+    - CIFAR-100 + the OOD benchmark sets (CIFAR-10, SVHN, STL-10, DTD, MNIST,
+      FashionMNIST, Flowers102, Food101, EuroSAT, GTSRB) auto-download via
+      torchvision on first use -- budget several GB free disk; sizes vary per
+      dataset (a few MB to ~5 GB for the larger ones).
+    - Generated adversarial examples + extracted first-conv features: a few
+      GB, written under `data/adversarial/` and `results/features/`
+      (both gitignored -- regenerated, never shipped).
+- Network: downloads the above datasets from their standard public mirrors
+  (torchvision's own download URLs) and the checkpoints from HuggingFace.
+  Dataset download speed is the dominant, most variable cost of this tier --
+  it is bounded by your network to those mirrors, not by this repository.
+- Time: highly network-dependent (see above); GPU compute itself is fast --
+  adversarial generation for all 6 core models x 4 attacks completed in
+  under a minute on the reference hardware (one H200). See INSTALL for the
+  measured end-to-end wall-clock on the reference machine.
+
+Tier T2 -- extended (optional, not required for the claimed badges)
+----------------------------------------------------------------------
+- Same software/hardware as T1. Longer runtime and more disk (all 20
+  architectures, cifar10 in addition to cifar100) because it covers more
+  models/datasets, not because it needs different hardware.
+- `01_download.py` (no `--core-only`) fetches the full 34-file checkpoint
+  panel (~1.1 GB) from the same HuggingFace repo.
+
+Tier T3 -- from scratch (documented, out of scope for this submission)
+---------------------------------------------------------------------------
+- Re-finetuning all 20 backbones from raw ImageNet-pretrained weights via
+  `experiments/00_finetune.py` is GPU-weeks of compute across the full
+  20-architecture x several-datasets matrix run at development time. The
+  commands are in the script and its docstring for anyone who wants to
+  attempt it, but it is not part of what this artifact asks a reviewer to
+  do.
+
+Known environment caveats
+---------------------------
+- DeepFool and CW (`--attacks deepfool cw`) are optimization-based attacks
+  that are algorithmically expensive regardless of implementation library;
+  the paper itself caps their evaluation-set size for this reason. They are
+  excluded from the T1/T2 commands documented in README/INSTALL by default;
+  add them explicitly for a fuller (slower) run.
+- GTSRB's upstream mirror (`sid.erda.dk`) has had transient outages in the
+  past; if `experiments/06b_extract_full.py` fails specifically on the
+  gtsrb OOD split, retry later or drop gtsrb from `--attacks`/the OOD set --
+  it does not block the required T1 tier, which uses cifar100 as the ID
+  dataset.

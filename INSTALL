@@ -1,0 +1,108 @@
+Install
+=======
+
+See REQUIREMENTS for the hardware/software each tier needs and STATUS for
+which badges this artifact claims and why. This file is the step-by-step
+walkthrough; every step ends with the output that confirms it worked.
+
+0. Clone
+--------
+    git clone https://github.com/amanyagami/viyog.git
+    cd viyog
+
+1. Environment
+--------------
+    uv sync
+
+Expected: creates `.venv/` and installs torch, numpy (and pytest/ruff for
+dev). No errors.
+
+Tier T0 -- install & sanity check (CPU, ~2 minutes)
+-------------------------------------------------------
+    uv run pytest tests/ -q
+
+Expected: `12 passed`.
+
+    uv run python examples/quickstart.py --smoke
+
+Expected output ends with three AUROC lines, e.g.:
+
+    T2  ID  vs ADV : AUROC=1.000   (adversarial detection)
+    T3  OOD vs ADV : AUROC=1.000   (OOD-vs-ADV separation)
+    T1  ID  vs OOD : AUROC=1.000   (weak; use a logit score)
+
+(`--smoke` uses synthetic data as a pure code sanity-check -- these AUROCs
+are not the paper's numbers. Tier T1 below reproduces the real ones.)
+
+This confirms the installed `viyog` package -- the artifact itself -- runs
+end-to-end and its statistic behaves as documented (higher V(x) for ADV).
+
+Tier T1 -- core recompute (GPU, the Reproducible-badge claim)
+------------------------------------------------------------------
+    uv sync --group experiments
+
+Expected: adds torchattacks, timm, pytorch-ood, h5py, pandas, fvcore, and the
+rest of the experiments/ pipeline's dependencies to `.venv/`.
+
+    uv run python experiments/01_download.py --core-only
+
+Expected: fetches 6 checkpoints (~250 MB total) from
+`huggingface.co/amanyagami/viyog-weights` and ends with:
+
+    All required (core) weights present.
+
+    export CUDA_VISIBLE_DEVICES=0   # whichever GPU you want to use
+    uv run python experiments/03_gen_adversarial.py \
+        --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
+        --attacks fgsm bim pgd apgd_ce
+
+Expected: writes `data/adversarial/<model>_<attack>.h5` for all 24
+model x attack combinations; ends with a per-file size listing and no errors.
+CIFAR-100 downloads automatically on first run if not already present.
+
+    uv run python experiments/06b_extract_full.py \
+        --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
+        --attacks fgsm bim pgd apgd_ce
+
+Expected: writes `results/features/featfull_<model>_<split>.h5` for the ID,
+10 OOD, and 4 ADV splits of each of the 6 models. The 10 OOD benchmark
+datasets auto-download via torchvision on first use (see REQUIREMENTS for
+disk/network notes -- this step's wall-clock is dominated by those
+downloads, not compute).
+
+    uv run python experiments/09_signatures_full.py \
+        --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base
+
+Expected: prints the best signature per task per model and writes
+`results/analysis/signature_auroc_full_<model>.csv`.
+
+    uv run python experiments/exp_master_table.py --dataset cifar100
+
+Expected: prints a ranked detector table and writes
+`results/analysis/master_comparison_cifar100.csv`. Check the
+`ViyogD_tv_dorm` row against README's "Expected headline numbers" table:
+
+    T2_ID_ADV ~ 0.966   T3_OOD_ADV ~ 0.824   state_mem_KB = 0.28
+
+(Small deviations from seed/hardware nondeterminism are expected; large
+deviations, e.g. off by more than a few hundredths of AUROC, indicate a
+setup problem worth reporting.)
+
+Optional -- regenerate the paper's figures/tables from these results:
+
+    uv run python experiments/plot_t3_breakdown.py --out /tmp/fig_t3.pdf
+    # (see the Makefile `figures` target for the other figure scripts)
+
+Tier T2 -- extended (optional)
+-------------------------------
+Repeat the T1 commands above without `--core-only` on 01_download.py and
+without `--models`/`--attacks` restrictions (defaults = all 20 architectures,
+all 6 attacks) on the later steps. Expect proportionally longer runtime and
+more disk.
+
+Demo (optional, no GPU/weights needed)
+-----------------------------------------
+    cd .. && make demo-data && make demo
+
+Expected: rebuilds `demo/data/*.csv` from `results/analysis/` and opens the
+interactive Viyog-vs-pytorch-ood leaderboard at http://localhost:7860.
