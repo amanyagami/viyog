@@ -55,8 +55,15 @@ def penultimate_dim(backbone: nn.Module) -> int:
     return last.in_features
 
 
-def full_macs(model: nn.Module, x: torch.Tensor) -> int:
-    """Sum conv+linear MACs for one forward via hooks (CPU, weight-agnostic)."""
+def full_macs_hookonly(model: nn.Module, x: torch.Tensor) -> int:
+    """Sum conv+linear MACs for one forward via hooks (CPU, weight-agnostic).
+
+    Kept only as an audit-trail comparison against full_macs() (below), which
+    is the correct count. This hook undercounts any architecture using
+    attention (misses matmul/bmm entirely) or per-position Linear "convs"
+    (misses the H×W multiplier) — do not use it as the ratio denominator.
+    See eval_systems.py for the same fix with the fvcore cross-check numbers.
+    """
     total = {"v": 0}
     handles = []
 
@@ -76,6 +83,22 @@ def full_macs(model: nn.Module, x: torch.Tensor) -> int:
     for h in handles:
         h.remove()
     return total["v"]
+
+
+def full_macs(model: nn.Module, x: torch.Tensor) -> int:
+    """Full-model MAC count via fvcore's trace-based FlopCountAnalysis.
+
+    Correct denominator for firstconv_mac_ratio_%: fvcore has handlers for
+    matmul/bmm/einsum/addmm (attention) in addition to conv/linear. Its "flop"
+    convention counts one fused multiply-add as one unit, same as
+    full_macs_hookonly()/firstconv_macs(), so values are directly comparable.
+    """
+    from fvcore.nn import FlopCountAnalysis
+
+    analysis = FlopCountAnalysis(model, x)
+    analysis.unsupported_ops_warnings(False)
+    analysis.uncalled_modules_warnings(False)
+    return int(analysis.total())
 
 
 def firstconv_macs(
@@ -160,6 +183,7 @@ def main() -> None:
         C = first.out_channels
         D = penultimate_dim(backbone)
         full = full_macs(backbone, x)
+        full_hookonly = full_macs_hookonly(backbone, x)
         fc_macs, (oh, ow) = firstconv_macs(backbone, first, x)
 
         st = detector_states(C, D, K, N)
@@ -173,6 +197,8 @@ def main() -> None:
                 "D_penult": D,
                 "K": K,
                 "macs_full_G": round(full / 1e9, 3),
+                "macs_full_hookonly_G": round(full_hookonly / 1e9, 3),
+                "hookonly_coverage_%": round(100 * full_hookonly / max(full, 1), 2),
                 "macs_firstconv_M": round(fc_macs / 1e6, 2),
                 "firstconv_mac_ratio_%": round(100 * fc_macs / max(full, 1), 4),
                 **{f"state_{k}_B": v for k, v in st.items()},

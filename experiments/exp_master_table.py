@@ -24,13 +24,17 @@ import pandas as pd
 
 # Per-family deployment cost. Viyog runs ONLY the first conv; logit + distance baselines
 # need a full forward (+ their stored state). Numbers from the edge measurements:
-#   detector_cost.csv (state mem), detector_cost_compute.csv (2.83% MACs),
+#   detector_cost.csv (state mem), detector_cost_compute.csv (2.284% MACs --
+#   corrected 2026-07-26: detector_cost_compute.csv's full-model MAC count was
+#   a hand-rolled Conv2d/Linear-only hook that missed attention entirely and
+#   undercounted convnextv2_base's per-position Linear "convs"; recomputed via
+#   fvcore.nn.FlopCountAnalysis, see eval_detector_cost.py full_macs()),
 #   edge_latency.csv (3.5% CPU), accelerator_energy.csv (5.1% energy).
 COST = {
     # method:        (state_mem_KB, compute_%fwd, cpu_lat_%fwd, accel_energy_%fwd)
-    "ViyogD_tv_dorm": (0.28, 2.83, 3.5, 5.1),
-    "ViyogD_hf_dorm": (0.28, 2.83, 3.5, 5.1),
-    "Viyog_Linf":     (0.01, 2.83, 3.5, 5.1),
+    "ViyogD_tv_dorm": (0.28, 2.284, 3.5, 5.1),
+    "ViyogD_hf_dorm": (0.28, 2.284, 3.5, 5.1),
+    "Viyog_Linf":     (0.01, 2.284, 3.5, 5.1),
     "Energy":         (0.004, 100., 100., 100.),
     "Entropy":        (0.004, 100., 100., 100.),
     "GEN":            (0.004, 100., 100., 100.),
@@ -134,8 +138,9 @@ def main() -> None:
            f"- **State memory** — Viyog {viyog_mem} KB vs Mahalanobis {COST['Mahalanobis'][0]/1024:.1f} MB "
            f"({COST['Mahalanobis'][0]/viyog_mem:,.0f}×), KNN {COST['KNN'][0]/1024:.1f} MB "
            f"({COST['KNN'][0]/viyog_mem:,.0f}×), ViM {COST['ViM'][0]/1024:.1f} MB.",
-           f"- **Compute / latency / energy** — Viyog first-conv 2.83% / 3.5% / 5.1% of a full forward; "
-           f"every logit & distance baseline pays 100% (full forward) on top of its state."]
+           f"- **Compute / latency / energy** — Viyog first-conv "
+           f"{COST['ViyogD_tv_dorm'][1]}% / {COST['ViyogD_tv_dorm'][2]}% / {COST['ViyogD_tv_dorm'][3]}% "
+           f"of a full forward; every logit & distance baseline pays 100% (full forward) on top of its state."]
     out_md = str(A / f"MASTER_COMPARISON_{args.dataset}.md")  # alongside the CSV, not root
     with open(out_md, "w") as fh:
         fh.write("\n".join(md) + "\n")

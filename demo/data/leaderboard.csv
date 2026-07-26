@@ -4,22 +4,22 @@ CIFAR-10,MaxLogit,logit,0.825,0.616,0.81,0.276,True,True,0.004,100.0,100.0,100.0
 CIFAR-10,GEN,logit,0.806,0.629,0.806,0.282,True,True,0.004,100.0,100.0,100.0,GEN,False
 CIFAR-10,Entropy,logit,0.825,0.608,0.804,0.278,True,True,0.004,100.0,100.0,100.0,Entropy,False
 CIFAR-10,KLMatching,logit,0.824,0.611,0.803,0.277,True,True,0.05,100.0,100.0,100.0,KL-Matching,False
-CIFAR-10,ViyogD_tv_dorm,Viyog (first-conv),0.658,0.995,0.802,0.624,True,True,0.28,2.83,3.5,5.1,Viyog-D (TV),True
+CIFAR-10,ViyogD_tv_dorm,Viyog (first-conv),0.658,0.995,0.802,0.624,True,True,0.28,2.284,3.5,5.1,Viyog-D (TV),True
 CIFAR-10,MSP,logit,0.83,0.601,0.801,0.252,True,True,0.004,100.0,100.0,100.0,MSP,False
-CIFAR-10,ViyogD_hf_dorm,Viyog (first-conv),0.795,0.979,0.684,0.473,True,True,0.28,2.83,3.5,5.1,Viyog-HF,True
-CIFAR-10,Viyog_Linf,Viyog (first-conv),0.601,0.527,0.625,0.313,True,False,0.01,2.83,3.5,5.1,Viyog-L∞ (norm baseline),True
-CIFAR-100,ViyogD_tv_dorm,Viyog (first-conv),0.69,0.966,0.824,0.546,True,True,0.28,2.83,3.5,5.1,Viyog-D (TV),True
+CIFAR-10,ViyogD_hf_dorm,Viyog (first-conv),0.795,0.979,0.684,0.473,True,True,0.28,2.284,3.5,5.1,Viyog-HF,True
+CIFAR-10,Viyog_Linf,Viyog (first-conv),0.601,0.527,0.625,0.313,True,False,0.01,2.284,3.5,5.1,Viyog-L∞ (norm baseline),True
+CIFAR-100,ViyogD_tv_dorm,Viyog (first-conv),0.69,0.966,0.824,0.546,True,True,0.28,2.284,3.5,5.1,Viyog-D (TV),True
 CIFAR-100,GEN,logit,0.847,0.685,0.809,0.212,True,False,0.004,100.0,100.0,100.0,GEN,False
 CIFAR-100,Entropy,logit,0.847,0.679,0.801,0.204,True,False,0.004,100.0,100.0,100.0,Entropy,False
 CIFAR-100,KLMatching,logit,0.844,0.662,0.798,0.207,True,False,0.05,100.0,100.0,100.0,KL-Matching,False
 CIFAR-100,MSP,logit,0.838,0.678,0.795,0.189,True,False,0.004,100.0,100.0,100.0,MSP,False
 CIFAR-100,MaxLogit,logit,0.852,0.659,0.793,0.192,True,False,0.004,100.0,100.0,100.0,MaxLogit,False
 CIFAR-100,Energy,logit,0.846,0.63,0.789,0.184,True,False,0.004,100.0,100.0,100.0,Energy,False
-CIFAR-100,ViyogD_hf_dorm,Viyog (first-conv),0.759,0.937,0.754,0.386,True,True,0.28,2.83,3.5,5.1,Viyog-HF,True
+CIFAR-100,ViyogD_hf_dorm,Viyog (first-conv),0.759,0.937,0.754,0.386,True,True,0.28,2.284,3.5,5.1,Viyog-HF,True
 CIFAR-100,ViM,distance (feature),0.9,0.683,0.745,,True,True,7300.0,100.0,100.0,100.0,ViM,False
 CIFAR-100,Mahalanobis,distance (feature),0.903,0.876,0.71,,True,True,7588.0,100.0,100.0,100.0,Mahalanobis,False
 CIFAR-100,KNN,distance (feature),0.876,0.84,0.685,,True,True,25600.0,100.0,100.0,100.0,KNN,False
-CIFAR-100,Viyog_Linf,Viyog (first-conv),0.604,0.583,0.587,0.243,True,False,0.01,2.83,3.5,5.1,Viyog-L∞ (norm baseline),True
+CIFAR-100,Viyog_Linf,Viyog (first-conv),0.604,0.583,0.587,0.243,True,False,0.01,2.284,3.5,5.1,Viyog-L∞ (norm baseline),True
 GTSRB,MSP,logit,0.95,0.614,0.834,0.415,True,False,0.004,100.0,100.0,100.0,MSP,False
 GTSRB,MaxLogit,logit,0.931,0.579,0.832,0.431,True,False,0.004,100.0,100.0,100.0,MaxLogit,False
 GTSRB,Entropy,logit,0.947,0.606,0.829,0.436,True,False,0.004,100.0,100.0,100.0,Entropy,False
