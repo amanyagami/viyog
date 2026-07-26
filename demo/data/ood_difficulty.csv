@@ -1,0 +1,325 @@
+model,signature,kind,T3,detector,is_viyog,dataset
+convnextv2_base,Viyog_D*(tv|p5|adapt),Far,0.99,Viyog-D (TV),True,CIFAR-100
+convnextv2_base,G_tv_mean,Far,0.976,TV (mean),False,CIFAR-100
+convnextv2_base,G_hf_mean,Far,0.955,Viyog-HF,True,CIFAR-100
+convnextv2_base,A_inf_norm,Far,0.583,raw L∞,False,CIFAR-100
+densenet121,Viyog_D*(tv|p5|adapt),Far,0.98,Viyog-D (TV),True,CIFAR-100
+densenet121,G_tv_mean,Far,0.96,TV (mean),False,CIFAR-100
+densenet121,G_hf_mean,Far,0.911,Viyog-HF,True,CIFAR-100
+densenet121,A_inf_norm,Far,0.549,raw L∞,False,CIFAR-100
+densenet161,Viyog_D*(tv|p5|adapt),Far,0.977,Viyog-D (TV),True,CIFAR-100
+densenet161,G_tv_mean,Far,0.93,TV (mean),False,CIFAR-100
+densenet161,G_hf_mean,Far,0.673,Viyog-HF,True,CIFAR-100
+densenet161,A_inf_norm,Far,0.568,raw L∞,False,CIFAR-100
+densenet169,Viyog_D*(tv|p5|adapt),Far,0.98,Viyog-D (TV),True,CIFAR-100
+densenet169,G_tv_mean,Far,0.934,TV (mean),False,CIFAR-100
+densenet169,G_hf_mean,Far,0.775,Viyog-HF,True,CIFAR-100
+densenet169,A_inf_norm,Far,0.576,raw L∞,False,CIFAR-100
+densenet201,Viyog_D*(tv|p5|adapt),Far,0.981,Viyog-D (TV),True,CIFAR-100
+densenet201,G_tv_mean,Far,0.915,TV (mean),False,CIFAR-100
+densenet201,G_hf_mean,Far,0.66,Viyog-HF,True,CIFAR-100
+densenet201,A_inf_norm,Far,0.574,raw L∞,False,CIFAR-100
+edgenext_small,Viyog_D*(tv|p5|adapt),Far,0.96,Viyog-D (TV),True,CIFAR-100
+edgenext_small,G_tv_mean,Far,0.969,TV (mean),False,CIFAR-100
+edgenext_small,G_hf_mean,Far,0.934,Viyog-HF,True,CIFAR-100
+edgenext_small,A_inf_norm,Far,0.501,raw L∞,False,CIFAR-100
+efficientnetv2_l,Viyog_D*(tv|p5|adapt),Far,0.943,Viyog-D (TV),True,CIFAR-100
+efficientnetv2_l,G_tv_mean,Far,0.963,TV (mean),False,CIFAR-100
+efficientnetv2_l,G_hf_mean,Far,0.931,Viyog-HF,True,CIFAR-100
+efficientnetv2_l,A_inf_norm,Far,0.559,raw L∞,False,CIFAR-100
+efficientvit_b1,Viyog_D*(tv|p5|adapt),Far,0.984,Viyog-D (TV),True,CIFAR-100
+efficientvit_b1,G_tv_mean,Far,0.986,TV (mean),False,CIFAR-100
+efficientvit_b1,G_hf_mean,Far,0.973,Viyog-HF,True,CIFAR-100
+efficientvit_b1,A_inf_norm,Far,0.558,raw L∞,False,CIFAR-100
+effnet_lite0,Viyog_D*(tv|p5|adapt),Far,0.972,Viyog-D (TV),True,CIFAR-100
+effnet_lite0,G_tv_mean,Far,0.972,TV (mean),False,CIFAR-100
+effnet_lite0,G_hf_mean,Far,0.952,Viyog-HF,True,CIFAR-100
+effnet_lite0,A_inf_norm,Far,0.509,raw L∞,False,CIFAR-100
+fastvit_sa12,Viyog_D*(tv|p5|adapt),Far,0.763,Viyog-D (TV),True,CIFAR-100
+fastvit_sa12,G_tv_mean,Far,0.734,TV (mean),False,CIFAR-100
+fastvit_sa12,G_hf_mean,Far,0.92,Viyog-HF,True,CIFAR-100
+fastvit_sa12,A_inf_norm,Far,0.557,raw L∞,False,CIFAR-100
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Far,0.965,Viyog-D (TV),True,CIFAR-100
+mobilenetv3_l,G_tv_mean,Far,0.978,TV (mean),False,CIFAR-100
+mobilenetv3_l,G_hf_mean,Far,0.96,Viyog-HF,True,CIFAR-100
+mobilenetv3_l,A_inf_norm,Far,0.559,raw L∞,False,CIFAR-100
+mobilenetv4_m,Viyog_D*(tv|p5|adapt),Far,0.976,Viyog-D (TV),True,CIFAR-100
+mobilenetv4_m,G_tv_mean,Far,0.984,TV (mean),False,CIFAR-100
+mobilenetv4_m,G_hf_mean,Far,0.972,Viyog-HF,True,CIFAR-100
+mobilenetv4_m,A_inf_norm,Far,0.546,raw L∞,False,CIFAR-100
+resnet101,Viyog_D*(tv|p5|adapt),Far,0.983,Viyog-D (TV),True,CIFAR-100
+resnet101,G_tv_mean,Far,0.956,TV (mean),False,CIFAR-100
+resnet101,G_hf_mean,Far,0.833,Viyog-HF,True,CIFAR-100
+resnet101,A_inf_norm,Far,0.539,raw L∞,False,CIFAR-100
+resnet152,Viyog_D*(tv|p5|adapt),Far,0.982,Viyog-D (TV),True,CIFAR-100
+resnet152,G_tv_mean,Far,0.915,TV (mean),False,CIFAR-100
+resnet152,G_hf_mean,Far,0.716,Viyog-HF,True,CIFAR-100
+resnet152,A_inf_norm,Far,0.522,raw L∞,False,CIFAR-100
+resnet50,Viyog_D*(tv|p5|adapt),Far,0.982,Viyog-D (TV),True,CIFAR-100
+resnet50,G_tv_mean,Far,0.969,TV (mean),False,CIFAR-100
+resnet50,G_hf_mean,Far,0.909,Viyog-HF,True,CIFAR-100
+resnet50,A_inf_norm,Far,0.54,raw L∞,False,CIFAR-100
+swin_tiny,Viyog_D*(tv|p5|adapt),Far,0.981,Viyog-D (TV),True,CIFAR-100
+swin_tiny,G_tv_mean,Far,0.977,TV (mean),False,CIFAR-100
+swin_tiny,G_hf_mean,Far,0.958,Viyog-HF,True,CIFAR-100
+swin_tiny,A_inf_norm,Far,0.652,raw L∞,False,CIFAR-100
+vit_base,Viyog_D*(tv|p5|adapt),Far,0.947,Viyog-D (TV),True,CIFAR-100
+vit_base,G_tv_mean,Far,0.845,TV (mean),False,CIFAR-100
+vit_base,G_hf_mean,Far,0.687,Viyog-HF,True,CIFAR-100
+vit_base,A_inf_norm,Far,0.514,raw L∞,False,CIFAR-100
+convnextv2_base,Viyog_D*(tv|p5|adapt),Near,0.942,Viyog-D (TV),True,CIFAR-100
+convnextv2_base,G_tv_mean,Near,0.554,TV (mean),False,CIFAR-100
+convnextv2_base,G_hf_mean,Near,0.718,Viyog-HF,True,CIFAR-100
+convnextv2_base,A_inf_norm,Near,0.684,raw L∞,False,CIFAR-100
+densenet121,Viyog_D*(tv|p5|adapt),Near,0.622,Viyog-D (TV),True,CIFAR-100
+densenet121,G_tv_mean,Near,0.522,TV (mean),False,CIFAR-100
+densenet121,G_hf_mean,Near,0.631,Viyog-HF,True,CIFAR-100
+densenet121,A_inf_norm,Near,0.81,raw L∞,False,CIFAR-100
+densenet161,Viyog_D*(tv|p5|adapt),Near,0.661,Viyog-D (TV),True,CIFAR-100
+densenet161,G_tv_mean,Near,0.647,TV (mean),False,CIFAR-100
+densenet161,G_hf_mean,Near,0.722,Viyog-HF,True,CIFAR-100
+densenet161,A_inf_norm,Near,0.804,raw L∞,False,CIFAR-100
+densenet169,Viyog_D*(tv|p5|adapt),Near,0.74,Viyog-D (TV),True,CIFAR-100
+densenet169,G_tv_mean,Near,0.638,TV (mean),False,CIFAR-100
+densenet169,G_hf_mean,Near,0.693,Viyog-HF,True,CIFAR-100
+densenet169,A_inf_norm,Near,0.812,raw L∞,False,CIFAR-100
+densenet201,Viyog_D*(tv|p5|adapt),Near,0.79,Viyog-D (TV),True,CIFAR-100
+densenet201,G_tv_mean,Near,0.654,TV (mean),False,CIFAR-100
+densenet201,G_hf_mean,Near,0.707,Viyog-HF,True,CIFAR-100
+densenet201,A_inf_norm,Near,0.813,raw L∞,False,CIFAR-100
+edgenext_small,Viyog_D*(tv|p5|adapt),Near,0.591,Viyog-D (TV),True,CIFAR-100
+edgenext_small,G_tv_mean,Near,0.583,TV (mean),False,CIFAR-100
+edgenext_small,G_hf_mean,Near,0.735,Viyog-HF,True,CIFAR-100
+edgenext_small,A_inf_norm,Near,0.567,raw L∞,False,CIFAR-100
+efficientnetv2_l,Viyog_D*(tv|p5|adapt),Near,0.75,Viyog-D (TV),True,CIFAR-100
+efficientnetv2_l,G_tv_mean,Near,0.693,TV (mean),False,CIFAR-100
+efficientnetv2_l,G_hf_mean,Near,0.594,Viyog-HF,True,CIFAR-100
+efficientnetv2_l,A_inf_norm,Near,0.716,raw L∞,False,CIFAR-100
+efficientvit_b1,Viyog_D*(tv|p5|adapt),Near,0.745,Viyog-D (TV),True,CIFAR-100
+efficientvit_b1,G_tv_mean,Near,0.716,TV (mean),False,CIFAR-100
+efficientvit_b1,G_hf_mean,Near,0.564,Viyog-HF,True,CIFAR-100
+efficientvit_b1,A_inf_norm,Near,0.585,raw L∞,False,CIFAR-100
+effnet_lite0,Viyog_D*(tv|p5|adapt),Near,0.643,Viyog-D (TV),True,CIFAR-100
+effnet_lite0,G_tv_mean,Near,0.613,TV (mean),False,CIFAR-100
+effnet_lite0,G_hf_mean,Near,0.509,Viyog-HF,True,CIFAR-100
+effnet_lite0,A_inf_norm,Near,0.57,raw L∞,False,CIFAR-100
+fastvit_sa12,Viyog_D*(tv|p5|adapt),Near,0.552,Viyog-D (TV),True,CIFAR-100
+fastvit_sa12,G_tv_mean,Near,0.581,TV (mean),False,CIFAR-100
+fastvit_sa12,G_hf_mean,Near,0.651,Viyog-HF,True,CIFAR-100
+fastvit_sa12,A_inf_norm,Near,0.612,raw L∞,False,CIFAR-100
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Near,0.777,Viyog-D (TV),True,CIFAR-100
+mobilenetv3_l,G_tv_mean,Near,0.67,TV (mean),False,CIFAR-100
+mobilenetv3_l,G_hf_mean,Near,0.566,Viyog-HF,True,CIFAR-100
+mobilenetv3_l,A_inf_norm,Near,0.619,raw L∞,False,CIFAR-100
+mobilenetv4_m,Viyog_D*(tv|p5|adapt),Near,0.953,Viyog-D (TV),True,CIFAR-100
+mobilenetv4_m,G_tv_mean,Near,0.798,TV (mean),False,CIFAR-100
+mobilenetv4_m,G_hf_mean,Near,0.716,Viyog-HF,True,CIFAR-100
+mobilenetv4_m,A_inf_norm,Near,0.58,raw L∞,False,CIFAR-100
+resnet101,Viyog_D*(tv|p5|adapt),Near,0.706,Viyog-D (TV),True,CIFAR-100
+resnet101,G_tv_mean,Near,0.559,TV (mean),False,CIFAR-100
+resnet101,G_hf_mean,Near,0.669,Viyog-HF,True,CIFAR-100
+resnet101,A_inf_norm,Near,0.557,raw L∞,False,CIFAR-100
+resnet152,Viyog_D*(tv|p5|adapt),Near,0.813,Viyog-D (TV),True,CIFAR-100
+resnet152,G_tv_mean,Near,0.626,TV (mean),False,CIFAR-100
+resnet152,G_hf_mean,Near,0.707,Viyog-HF,True,CIFAR-100
+resnet152,A_inf_norm,Near,0.534,raw L∞,False,CIFAR-100
+resnet50,Viyog_D*(tv|p5|adapt),Near,0.804,Viyog-D (TV),True,CIFAR-100
+resnet50,G_tv_mean,Near,0.511,TV (mean),False,CIFAR-100
+resnet50,G_hf_mean,Near,0.613,Viyog-HF,True,CIFAR-100
+resnet50,A_inf_norm,Near,0.561,raw L∞,False,CIFAR-100
+swin_tiny,Viyog_D*(tv|p5|adapt),Near,0.857,Viyog-D (TV),True,CIFAR-100
+swin_tiny,G_tv_mean,Near,0.508,TV (mean),False,CIFAR-100
+swin_tiny,G_hf_mean,Near,0.683,Viyog-HF,True,CIFAR-100
+swin_tiny,A_inf_norm,Near,0.697,raw L∞,False,CIFAR-100
+vit_base,Viyog_D*(tv|p5|adapt),Near,0.608,Viyog-D (TV),True,CIFAR-100
+vit_base,G_tv_mean,Near,0.695,TV (mean),False,CIFAR-100
+vit_base,G_hf_mean,Near,0.693,Viyog-HF,True,CIFAR-100
+vit_base,A_inf_norm,Near,0.705,raw L∞,False,CIFAR-100
+convnextv2_base,Viyog_D*(tv|p5|adapt),Texture,0.668,Viyog-D (TV),True,CIFAR-100
+convnextv2_base,G_tv_mean,Texture,0.869,TV (mean),False,CIFAR-100
+convnextv2_base,G_hf_mean,Texture,0.956,Viyog-HF,True,CIFAR-100
+convnextv2_base,A_inf_norm,Texture,0.606,raw L∞,False,CIFAR-100
+densenet121,Viyog_D*(tv|p5|adapt),Texture,0.795,Viyog-D (TV),True,CIFAR-100
+densenet121,G_tv_mean,Texture,0.877,TV (mean),False,CIFAR-100
+densenet121,G_hf_mean,Texture,0.954,Viyog-HF,True,CIFAR-100
+densenet121,A_inf_norm,Texture,0.72,raw L∞,False,CIFAR-100
+densenet161,Viyog_D*(tv|p5|adapt),Texture,0.636,Viyog-D (TV),True,CIFAR-100
+densenet161,G_tv_mean,Texture,0.932,TV (mean),False,CIFAR-100
+densenet161,G_hf_mean,Texture,0.984,Viyog-HF,True,CIFAR-100
+densenet161,A_inf_norm,Texture,0.698,raw L∞,False,CIFAR-100
+densenet169,Viyog_D*(tv|p5|adapt),Texture,0.546,Viyog-D (TV),True,CIFAR-100
+densenet169,G_tv_mean,Texture,0.929,TV (mean),False,CIFAR-100
+densenet169,G_hf_mean,Texture,0.978,Viyog-HF,True,CIFAR-100
+densenet169,A_inf_norm,Texture,0.711,raw L∞,False,CIFAR-100
+densenet201,Viyog_D*(tv|p5|adapt),Texture,0.602,Viyog-D (TV),True,CIFAR-100
+densenet201,G_tv_mean,Texture,0.925,TV (mean),False,CIFAR-100
+densenet201,G_hf_mean,Texture,0.978,Viyog-HF,True,CIFAR-100
+densenet201,A_inf_norm,Texture,0.712,raw L∞,False,CIFAR-100
+edgenext_small,Viyog_D*(tv|p5|adapt),Texture,0.751,Viyog-D (TV),True,CIFAR-100
+edgenext_small,G_tv_mean,Texture,0.89,TV (mean),False,CIFAR-100
+edgenext_small,G_hf_mean,Texture,0.971,Viyog-HF,True,CIFAR-100
+edgenext_small,A_inf_norm,Texture,0.613,raw L∞,False,CIFAR-100
+efficientnetv2_l,Viyog_D*(tv|p5|adapt),Texture,0.716,Viyog-D (TV),True,CIFAR-100
+efficientnetv2_l,G_tv_mean,Texture,0.75,TV (mean),False,CIFAR-100
+efficientnetv2_l,G_hf_mean,Texture,0.841,Viyog-HF,True,CIFAR-100
+efficientnetv2_l,A_inf_norm,Texture,0.706,raw L∞,False,CIFAR-100
+efficientvit_b1,Viyog_D*(tv|p5|adapt),Texture,0.679,Viyog-D (TV),True,CIFAR-100
+efficientvit_b1,G_tv_mean,Texture,0.743,TV (mean),False,CIFAR-100
+efficientvit_b1,G_hf_mean,Texture,0.865,Viyog-HF,True,CIFAR-100
+efficientvit_b1,A_inf_norm,Texture,0.58,raw L∞,False,CIFAR-100
+effnet_lite0,Viyog_D*(tv|p5|adapt),Texture,0.735,Viyog-D (TV),True,CIFAR-100
+effnet_lite0,G_tv_mean,Texture,0.794,TV (mean),False,CIFAR-100
+effnet_lite0,G_hf_mean,Texture,0.899,Viyog-HF,True,CIFAR-100
+effnet_lite0,A_inf_norm,Texture,0.567,raw L∞,False,CIFAR-100
+fastvit_sa12,Viyog_D*(tv|p5|adapt),Texture,0.757,Viyog-D (TV),True,CIFAR-100
+fastvit_sa12,G_tv_mean,Texture,0.854,TV (mean),False,CIFAR-100
+fastvit_sa12,G_hf_mean,Texture,0.936,Viyog-HF,True,CIFAR-100
+fastvit_sa12,A_inf_norm,Texture,0.567,raw L∞,False,CIFAR-100
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Texture,0.567,Viyog-D (TV),True,CIFAR-100
+mobilenetv3_l,G_tv_mean,Texture,0.781,TV (mean),False,CIFAR-100
+mobilenetv3_l,G_hf_mean,Texture,0.892,Viyog-HF,True,CIFAR-100
+mobilenetv3_l,A_inf_norm,Texture,0.675,raw L∞,False,CIFAR-100
+mobilenetv4_m,Viyog_D*(tv|p5|adapt),Texture,0.767,Viyog-D (TV),True,CIFAR-100
+mobilenetv4_m,G_tv_mean,Texture,0.644,TV (mean),False,CIFAR-100
+mobilenetv4_m,G_hf_mean,Texture,0.749,Viyog-HF,True,CIFAR-100
+mobilenetv4_m,A_inf_norm,Texture,0.585,raw L∞,False,CIFAR-100
+resnet101,Viyog_D*(tv|p5|adapt),Texture,0.665,Viyog-D (TV),True,CIFAR-100
+resnet101,G_tv_mean,Texture,0.892,TV (mean),False,CIFAR-100
+resnet101,G_hf_mean,Texture,0.971,Viyog-HF,True,CIFAR-100
+resnet101,A_inf_norm,Texture,0.621,raw L∞,False,CIFAR-100
+resnet152,Viyog_D*(tv|p5|adapt),Texture,0.618,Viyog-D (TV),True,CIFAR-100
+resnet152,G_tv_mean,Texture,0.891,TV (mean),False,CIFAR-100
+resnet152,G_hf_mean,Texture,0.969,Viyog-HF,True,CIFAR-100
+resnet152,A_inf_norm,Texture,0.643,raw L∞,False,CIFAR-100
+resnet50,Viyog_D*(tv|p5|adapt),Texture,0.546,Viyog-D (TV),True,CIFAR-100
+resnet50,G_tv_mean,Texture,0.862,TV (mean),False,CIFAR-100
+resnet50,G_hf_mean,Texture,0.953,Viyog-HF,True,CIFAR-100
+resnet50,A_inf_norm,Texture,0.628,raw L∞,False,CIFAR-100
+swin_tiny,Viyog_D*(tv|p5|adapt),Texture,0.608,Viyog-D (TV),True,CIFAR-100
+swin_tiny,G_tv_mean,Texture,0.861,TV (mean),False,CIFAR-100
+swin_tiny,G_hf_mean,Texture,0.938,Viyog-HF,True,CIFAR-100
+swin_tiny,A_inf_norm,Texture,0.697,raw L∞,False,CIFAR-100
+vit_base,Viyog_D*(tv|p5|adapt),Texture,0.786,Viyog-D (TV),True,CIFAR-100
+vit_base,G_tv_mean,Texture,0.775,TV (mean),False,CIFAR-100
+vit_base,G_hf_mean,Texture,0.782,Viyog-HF,True,CIFAR-100
+vit_base,A_inf_norm,Texture,0.557,raw L∞,False,CIFAR-100
+convnextv2_base,Viyog_D*(tv|p5|adapt),Far,0.967,Viyog-D (TV),True,CIFAR-10
+convnextv2_base,G_tv_mean,Far,0.939,TV (mean),False,CIFAR-10
+convnextv2_base,G_hf_mean,Far,0.881,Viyog-HF,True,CIFAR-10
+convnextv2_base,A_inf_norm,Far,0.504,raw L∞,False,CIFAR-10
+densenet121,Viyog_D*(tv|p5|adapt),Far,0.991,Viyog-D (TV),True,CIFAR-10
+densenet121,G_tv_mean,Far,0.972,TV (mean),False,CIFAR-10
+densenet121,G_hf_mean,Far,0.931,Viyog-HF,True,CIFAR-10
+densenet121,A_inf_norm,Far,0.577,raw L∞,False,CIFAR-10
+resnet50,Viyog_D*(tv|p5|adapt),Far,0.997,Viyog-D (TV),True,CIFAR-10
+resnet50,G_tv_mean,Far,0.977,TV (mean),False,CIFAR-10
+resnet50,G_hf_mean,Far,0.938,Viyog-HF,True,CIFAR-10
+resnet50,A_inf_norm,Far,0.543,raw L∞,False,CIFAR-10
+swin_tiny,Viyog_D*(tv|p5|adapt),Far,0.996,Viyog-D (TV),True,CIFAR-10
+swin_tiny,G_tv_mean,Far,0.976,TV (mean),False,CIFAR-10
+swin_tiny,G_hf_mean,Far,0.954,Viyog-HF,True,CIFAR-10
+swin_tiny,A_inf_norm,Far,0.515,raw L∞,False,CIFAR-10
+convnextv2_base,Viyog_D*(tv|p5|adapt),Near,0.634,Viyog-D (TV),True,CIFAR-10
+convnextv2_base,G_tv_mean,Near,0.847,TV (mean),False,CIFAR-10
+convnextv2_base,G_hf_mean,Near,0.991,Viyog-HF,True,CIFAR-10
+convnextv2_base,A_inf_norm,Near,0.88,raw L∞,False,CIFAR-10
+densenet121,Viyog_D*(tv|p5|adapt),Near,0.503,Viyog-D (TV),True,CIFAR-10
+densenet121,G_tv_mean,Near,0.659,TV (mean),False,CIFAR-10
+densenet121,G_hf_mean,Near,0.827,Viyog-HF,True,CIFAR-10
+densenet121,A_inf_norm,Near,0.944,raw L∞,False,CIFAR-10
+resnet50,Viyog_D*(tv|p5|adapt),Near,0.738,Viyog-D (TV),True,CIFAR-10
+resnet50,G_tv_mean,Near,0.61,TV (mean),False,CIFAR-10
+resnet50,G_hf_mean,Near,0.831,Viyog-HF,True,CIFAR-10
+resnet50,A_inf_norm,Near,0.573,raw L∞,False,CIFAR-10
+swin_tiny,Viyog_D*(tv|p5|adapt),Near,0.731,Viyog-D (TV),True,CIFAR-10
+swin_tiny,G_tv_mean,Near,0.737,TV (mean),False,CIFAR-10
+swin_tiny,G_hf_mean,Near,0.959,Viyog-HF,True,CIFAR-10
+swin_tiny,A_inf_norm,Near,0.762,raw L∞,False,CIFAR-10
+convnextv2_base,Viyog_D*(tv|p5|adapt),Texture,0.804,Viyog-D (TV),True,CIFAR-10
+convnextv2_base,G_tv_mean,Texture,0.905,TV (mean),False,CIFAR-10
+convnextv2_base,G_hf_mean,Texture,0.982,Viyog-HF,True,CIFAR-10
+convnextv2_base,A_inf_norm,Texture,0.704,raw L∞,False,CIFAR-10
+densenet121,Viyog_D*(tv|p5|adapt),Texture,0.784,Viyog-D (TV),True,CIFAR-10
+densenet121,G_tv_mean,Texture,0.866,TV (mean),False,CIFAR-10
+densenet121,G_hf_mean,Texture,0.95,Viyog-HF,True,CIFAR-10
+densenet121,A_inf_norm,Texture,0.748,raw L∞,False,CIFAR-10
+resnet50,Viyog_D*(tv|p5|adapt),Texture,0.54,Viyog-D (TV),True,CIFAR-10
+resnet50,G_tv_mean,Texture,0.842,TV (mean),False,CIFAR-10
+resnet50,G_hf_mean,Texture,0.948,Viyog-HF,True,CIFAR-10
+resnet50,A_inf_norm,Texture,0.629,raw L∞,False,CIFAR-10
+swin_tiny,Viyog_D*(tv|p5|adapt),Texture,0.703,Viyog-D (TV),True,CIFAR-10
+swin_tiny,G_tv_mean,Texture,0.883,TV (mean),False,CIFAR-10
+swin_tiny,G_hf_mean,Texture,0.961,Viyog-HF,True,CIFAR-10
+swin_tiny,A_inf_norm,Texture,0.601,raw L∞,False,CIFAR-10
+convnextv2_base,Viyog_D*(tv|p5|adapt),Far,0.979,Viyog-D (TV),True,GTSRB
+convnextv2_base,G_tv_mean,Far,0.945,TV (mean),False,GTSRB
+convnextv2_base,G_hf_mean,Far,0.921,Viyog-HF,True,GTSRB
+convnextv2_base,A_inf_norm,Far,0.603,raw L∞,False,GTSRB
+densenet121,Viyog_D*(tv|p5|adapt),Far,0.999,Viyog-D (TV),True,GTSRB
+densenet121,G_tv_mean,Far,0.979,TV (mean),False,GTSRB
+densenet121,G_hf_mean,Far,0.998,Viyog-HF,True,GTSRB
+densenet121,A_inf_norm,Far,0.506,raw L∞,False,GTSRB
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Far,0.999,Viyog-D (TV),True,GTSRB
+mobilenetv3_l,G_tv_mean,Far,0.998,TV (mean),False,GTSRB
+mobilenetv3_l,G_hf_mean,Far,0.994,Viyog-HF,True,GTSRB
+mobilenetv3_l,A_inf_norm,Far,0.553,raw L∞,False,GTSRB
+resnet50,Viyog_D*(tv|p5|adapt),Far,0.999,Viyog-D (TV),True,GTSRB
+resnet50,G_tv_mean,Far,0.991,TV (mean),False,GTSRB
+resnet50,G_hf_mean,Far,0.989,Viyog-HF,True,GTSRB
+resnet50,A_inf_norm,Far,0.562,raw L∞,False,GTSRB
+swin_tiny,Viyog_D*(tv|p5|adapt),Far,0.999,Viyog-D (TV),True,GTSRB
+swin_tiny,G_tv_mean,Far,0.992,TV (mean),False,GTSRB
+swin_tiny,G_hf_mean,Far,0.99,Viyog-HF,True,GTSRB
+swin_tiny,A_inf_norm,Far,0.549,raw L∞,False,GTSRB
+vit_base,Viyog_D*(tv|p5|adapt),Far,0.84,Viyog-D (TV),True,GTSRB
+vit_base,G_tv_mean,Far,0.7,TV (mean),False,GTSRB
+vit_base,G_hf_mean,Far,0.546,Viyog-HF,True,GTSRB
+vit_base,A_inf_norm,Far,0.552,raw L∞,False,GTSRB
+convnextv2_base,Viyog_D*(tv|p5|adapt),Near,0.501,Viyog-D (TV),True,GTSRB
+convnextv2_base,G_tv_mean,Near,0.644,TV (mean),False,GTSRB
+convnextv2_base,G_hf_mean,Near,0.729,Viyog-HF,True,GTSRB
+convnextv2_base,A_inf_norm,Near,0.743,raw L∞,False,GTSRB
+densenet121,Viyog_D*(tv|p5|adapt),Near,0.749,Viyog-D (TV),True,GTSRB
+densenet121,G_tv_mean,Near,0.512,TV (mean),False,GTSRB
+densenet121,G_hf_mean,Near,0.601,Viyog-HF,True,GTSRB
+densenet121,A_inf_norm,Near,0.765,raw L∞,False,GTSRB
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Near,0.617,Viyog-D (TV),True,GTSRB
+mobilenetv3_l,G_tv_mean,Near,0.638,TV (mean),False,GTSRB
+mobilenetv3_l,G_hf_mean,Near,0.567,Viyog-HF,True,GTSRB
+mobilenetv3_l,A_inf_norm,Near,0.62,raw L∞,False,GTSRB
+resnet50,Viyog_D*(tv|p5|adapt),Near,0.831,Viyog-D (TV),True,GTSRB
+resnet50,G_tv_mean,Near,0.579,TV (mean),False,GTSRB
+resnet50,G_hf_mean,Near,0.581,Viyog-HF,True,GTSRB
+resnet50,A_inf_norm,Near,0.621,raw L∞,False,GTSRB
+swin_tiny,Viyog_D*(tv|p5|adapt),Near,0.862,Viyog-D (TV),True,GTSRB
+swin_tiny,G_tv_mean,Near,0.503,TV (mean),False,GTSRB
+swin_tiny,G_hf_mean,Near,0.645,Viyog-HF,True,GTSRB
+swin_tiny,A_inf_norm,Near,0.77,raw L∞,False,GTSRB
+vit_base,Viyog_D*(tv|p5|adapt),Near,0.565,Viyog-D (TV),True,GTSRB
+vit_base,G_tv_mean,Near,0.719,TV (mean),False,GTSRB
+vit_base,G_hf_mean,Near,0.706,Viyog-HF,True,GTSRB
+vit_base,A_inf_norm,Near,0.696,raw L∞,False,GTSRB
+convnextv2_base,Viyog_D*(tv|p5|adapt),Texture,0.847,Viyog-D (TV),True,GTSRB
+convnextv2_base,G_tv_mean,Texture,0.921,TV (mean),False,GTSRB
+convnextv2_base,G_hf_mean,Texture,0.976,Viyog-HF,True,GTSRB
+convnextv2_base,A_inf_norm,Texture,0.661,raw L∞,False,GTSRB
+densenet121,Viyog_D*(tv|p5|adapt),Texture,0.704,Viyog-D (TV),True,GTSRB
+densenet121,G_tv_mean,Texture,0.865,TV (mean),False,GTSRB
+densenet121,G_hf_mean,Texture,0.935,Viyog-HF,True,GTSRB
+densenet121,A_inf_norm,Texture,0.672,raw L∞,False,GTSRB
+mobilenetv3_l,Viyog_D*(tv|p5|adapt),Texture,0.824,Viyog-D (TV),True,GTSRB
+mobilenetv3_l,G_tv_mean,Texture,0.825,TV (mean),False,GTSRB
+mobilenetv3_l,G_hf_mean,Texture,0.891,Viyog-HF,True,GTSRB
+mobilenetv3_l,A_inf_norm,Texture,0.673,raw L∞,False,GTSRB
+resnet50,Viyog_D*(tv|p5|adapt),Texture,0.607,Viyog-D (TV),True,GTSRB
+resnet50,G_tv_mean,Texture,0.835,TV (mean),False,GTSRB
+resnet50,G_hf_mean,Texture,0.932,Viyog-HF,True,GTSRB
+resnet50,A_inf_norm,Texture,0.563,raw L∞,False,GTSRB
+swin_tiny,Viyog_D*(tv|p5|adapt),Texture,0.602,Viyog-D (TV),True,GTSRB
+swin_tiny,G_tv_mean,Texture,0.852,TV (mean),False,GTSRB
+swin_tiny,G_hf_mean,Texture,0.915,Viyog-HF,True,GTSRB
+swin_tiny,A_inf_norm,Texture,0.732,raw L∞,False,GTSRB
+vit_base,Viyog_D*(tv|p5|adapt),Texture,0.741,Viyog-D (TV),True,GTSRB
+vit_base,G_tv_mean,Texture,0.754,TV (mean),False,GTSRB
+vit_base,G_hf_mean,Texture,0.739,Viyog-HF,True,GTSRB
+vit_base,A_inf_norm,Texture,0.553,raw L∞,False,GTSRB

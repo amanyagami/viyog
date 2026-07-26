@@ -1,0 +1,47 @@
+{
+  "datasets": [
+    "CIFAR-10",
+    "CIFAR-100",
+    "GTSRB"
+  ],
+  "n_detectors": 12,
+  "detectors": [
+    "Energy",
+    "Entropy",
+    "GEN",
+    "KL-Matching",
+    "KNN",
+    "MSP",
+    "Mahalanobis",
+    "MaxLogit",
+    "ViM",
+    "Viyog-D (TV)",
+    "Viyog-HF",
+    "Viyog-L\u221e (norm baseline)"
+  ],
+  "n_models": 20,
+  "models": [
+    "convnextv2_base",
+    "densenet121",
+    "densenet161",
+    "densenet169",
+    "densenet201",
+    "edgenext_small",
+    "efficientnetv2_l",
+    "efficientvit_b1",
+    "effnet_lite0",
+    "fastvit_sa12",
+    "mobilenetv3_l",
+    "mobilenetv4_m",
+    "mobileone_s1",
+    "resnet101",
+    "resnet152",
+    "resnet18",
+    "resnet34",
+    "resnet50",
+    "swin_tiny",
+    "vit_base"
+  ],
+  "headline_metric": "T3 = OOD-vs-ADV separation AUROC (1.0 perfect, 0.5 chance)",
+  "source": "results/analysis/*.csv (Viyog CODES+ISSS 2026, paper #215)"
+}

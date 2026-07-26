@@ -1,0 +1,1262 @@
+% ============================================================
+%  Viyog: Separating Adversarial and Out-of-Distribution Inputs
+%  via First-Layer Feature Norm Statistics
+%  ESWEEK 2026 — IEEE Double-Column, Journal Track (TCAD)
+%  Target: 12 pages
+% ============================================================
+\documentclass[10pt,letterpaper,journal]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage{stfloats}
+\usepackage{url}
+% hyperref in draft mode: cross-refs work but no PDF annotations/anchors are
+% created, which prevents lineno from placing anchors outside page bounds.
+\usepackage[draft]{hyperref}
+\usepackage{balance}
+\usepackage{microtype}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{makecell}
+\usepackage{amsthm}
+\usepackage[switch]{lineno}
+\usepackage{placeins}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}% ✓
+\newcommand{\xmark}{\ding{55}}% ✗
+
+\newtheorem{proposition}{Proposition}
+
+% ---- Revision highlighting (STEP 3): all passages added/changed to address a
+%      reviewer point are wrapped in ... and render in BLUE.
+%      Camera-ready: revision highlighting removed. ----
+\newcommand{\rev}[1]{{\color{blue}#1}}
+\newcommand{\revtab}{\color{blue}}
+\definecolor{viyoggreen}{HTML}{009E73}% Viyog brand green (matches figure palette)
+
+% ---- Title --------------------------------------------------
+\title{ Viyog: Separating Adversarial and Out-of-Distribution }
+\author{Anonymous Author(s)}
+
+\begin{document}
+\linenumbers  % enabled for reviewer navigation; placed after \begin{document} to avoid lineno+hyperref off-page anchors
+\maketitle
+
+% ---- Abstract -----------------------------------------------
+\begin{abstract}
+\rev{Safety-critical systems must respond differently to two anomalies:
+\emph{out-of-distribution} (OOD) inputs, which call for abstention, and
+\emph{adversarial} (ADV) attacks, which demand rejection. Existing detectors
+collapse both into a single anomaly score. We present \emph{Viyog}, a
+training-free plug-in second stage that separates OOD from ADV by reading the
+\emph{dormant-band roughness} of the first convolutional activation---how
+spatially jagged its quietest channels are (a magnitude-normalised
+\emph{total variation}, i.e.\ average change between neighbouring pixels),
+computable from the forward pass already in progress and storing only
+$\approx\!0.3$\,KB ($O(C)$) versus 4.5--40\,MB for feature-distance baselines.
+
+Gradient attacks inject broadband high-frequency residue into the quietest
+first-layer channels; natural inputs (ID and OOD alike) leave them smooth.
+Viyog exploits this asymmetry: it detects adversarials at AUROC
+\textbf{0.966} (where $1.0$ is perfect and $0.5$ is chance) while logit detectors
+are blind ($\le\!0.41$); combined with
+logit scores it gives the first deployable three-way ID/OOD/ADV separator
+(balanced accuracy \textbf{0.798} over 20 architectures; \textbf{0.863} on
+GTSRB). We prove scale-invariance (P1)---so norm-preserving attacks achieve
+\textbf{0\% evasion}---and a concrete separation bound (P2/P3). The detector
+generalises across 3 datasets, 20 architectures, 4 attacks, and 1D non-vision
+signals, adds no parameters, and runs in a single forward pass.}
+\end{abstract}
+
+\begin{IEEEkeywords}
+Out-of-distribution detection, adversarial robustness, feature norms,
+deep neural networks, safety-critical systems, embedded AI, architecture
+generalization.
+\end{IEEEkeywords}
+
+% =============================================================
+\section{Introduction}
+\label{sec:intro}
+
+\linelabel{LL:secI}Deep neural networks (DNNs)
+achieve state-of-the-art performance across
+safety-critical domains including autonomous driving,
+medical imaging, and embedded vision
+systems.
+Deployed systems must therefore detect and respond appropriately to abnormal
+inputs before acting on model predictions---a requirement that standard
+classification pipelines do not satisfy~\cite{10.1145/3626314}.
+
+Two kinds of anomalous input require \emph{opposite} responses (Fig.~\ref{fig:problem}):
+\emph{OOD} inputs fall outside the training distribution and call for abstention,
+while \emph{adversarial} (ADV) inputs are crafted to force misclassification and
+demand active rejection. Conflating them wastes defences or silently accepts
+attacks. No existing lightweight detector makes this distinction; we show the
+signal is hidden in the \emph{first} layer.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_problem_concept.pdf}
+\caption{\rev{\textbf{The core problem: OOD and ADV inputs require opposite responses, yet
+both fool the classifier.}
+\textbf{(1)~Input space:} an OOD (out-of-distribution) input lies outside the
+training cluster; an adversarial (ADV) input is deliberately crafted to sit
+\emph{inside} the cluster while forcing a wrong prediction.
+\textbf{(2)~Classifier:} both produce anomalous logits that existing output-side
+detectors cannot distinguish.
+\textbf{(3)~Viyog:} reads the dormant-band roughness $V(x)$ of the first
+convolutional activation map---a gradient-free, 0.3\,KB statistic---and
+separates the two.
+\textbf{(4)~Response:} OOD $\to$ abstain / flag for review; ADV $\to$ reject /
+security alert.  Conflating them wastes adversarial defences on benign inputs or
+silently accepts attacks.}}
+\label{fig:problem}
+\end{figure}
+
+We identify a consistent, architecturally-stable asymmetry in first-layer
+activation statistics that enables this separation at no additional cost.
+Gradient-based adversarial attacks inject a \emph{broadband residue}---noise
+spread across all spatial frequencies---into the first convolutional or
+projection layer: the attack spends its norm budget on a high-curvature surface,
+so the per-pixel perturbation passes through even the quietest (``dormant'')
+filters as high-frequency structure. Natural inputs (ID \emph{and} OOD),
+unconstrained by any such objective, leave those low-gain channels
+smooth~\cite{FLOD,bakiskan2022early}.
+\rev{An earlier, weaker form of Viyog exploited this asymmetry with the raw
+first-layer $L_\infty$ norm (the \emph{$L_\infty$-form}): adversarials fall below
+the ID mean and OOD at or above it. But the $L_\infty$-form is
+\emph{regime-bounded}---strong only for \emph{far}-OOD (inputs far from the
+training distribution, e.g.\ a different dataset) and near-chance for
+\emph{near}-OOD (visually similar shifts) under a strict cross-model protocol.}
+The deployable signal is instead the \emph{relative roughness} of the dormant
+channels: a magnitude-normalised total-variation (TV) statistic (Viyog,
+Sec.~\ref{sec:method}) that measures \emph{shape} (spatial roughness), not
+magnitude. \rev{Being a $0$-homogeneous ratio---scale-invariant, so rescaling all
+activations leaves it unchanged---it is provably immune to norm-preserving
+attacks and recovers the near-OOD regime the $L_\infty$-form loses.} It is
+complementary to logit OOD scores and yields three-way ID/OOD/ADV separation
+(Sec.~\ref{sec:results}); the phenomenon persists across CNN and transformer
+architectures and across $32\times32$ and $224\times224$ inputs. We ground this
+in a formal Proposition (Section~\ref{sec:theory}) that proves both halves: the
+dormant-band roughness inflates under \emph{any} broadband attack, yet stays
+invariant to activation magnitude.
+
+This paper makes five core contributions:
+
+\noindent\textbf{C1 --- The Viyog scoring statistic.} A gradient-free
+first-layer statistic---the magnitude-normalised total variation of the quietest
+(\emph{dormant}) channels---that separates ADV from OOD where the raw $L_\infty$
+norm cannot (mechanism confirmed on real ResNet-50 features, Fig.~\ref{fig:mechanism}). The continuous statistic $V(x)$ is itself the graded
+degree-of-anomaly readout; the monotone routing squash is retained only to shape the binary operating curve, not as the severity scale. The raw
+$L_\infty$ score is kept as the motivating baseline.
+
+\noindent\textbf{C2 --- Theory for the shape statistic.} A formal
+Proposition (Sec.~\ref{ssec:shape_theory}) proving that the dormant-band roughness
+statistic is \emph{scale-invariant}---so norm-preserving attacks cannot move
+it---and that it \emph{inflates under the exact affine residue}
+$e_c=w_c\!\ast\delta$ any broadband attack injects, for \emph{any} affine first
+layer (convolution or ViT/Swin patch embedding) and with no activation-curvature
+assumption (a $1$-Lipschitz readout suffices). The ID/OOD/ADV ordering is stated
+as a conditional consequence and an experimentally validated prediction, not a
+worst-case guarantee; a general-affine operator-norm envelope
+(Appendix~\ref{app:affine}) covers the raw-$L_\infty$ baseline.
+
+\noindent\textbf{C3 --- Regime characterisation and a complementary
+dormant-band detector.} Delimiting where the global $L_\infty$ mechanism
+holds and recovering the lost near-OOD/strong-attack regime with Viyog, we
+obtain the first deployable three-way ID/OOD/ADV separation: across 20
+architectures and two datasets Viyog is complementary to logit OOD scores, and
+a lightweight supervised head over the full detector panel reaches balanced
+accuracy $0.80$ (CIFAR-100, 20 archs) / $0.86$ (GTSRB, 6 archs), the
+logit$+$Viyog pair alone $0.76$/$0.77$, at $\approx0.3$\,KB of added
+state---validated on ConvNeXtV2, ViT-B/16, and Swin-T at $224\times224$.
+
+\noindent\textbf{C4 --- Comprehensive empirical validation.} Experiments
+across five datasets and four $L_\infty$ attacks. Under the original
+far-OOD single-direction protocol the raw $L_\infty$ score outperforms ten
+established baselines by up to \textbf{$+$24.9~AUROC points}; the stricter
+\emph{directionless} re-evaluation---which disqualifies any score whose high/low
+meaning flips between models---over 20 architectures is reported in
+Table~\ref{tab:main_results}.
+
+\noindent\textbf{C5 --- Adaptive attack analysis.} Norm-preserving
+evasion achieves $0\%$ evasion; a both-aware adaptive attacker pays an $8\%$
+success cost; the stochastic Expectation-over-Transformation (EOT)
+defence---randomising which dormant channels are read so the attacker cannot
+lock onto a fixed target---restores the panel to \textbf{0.82}
+(Fig.~\ref{fig:adaptive_ladder}).
+
+% =============================================================
+\section{Background and Related Work}
+\label{sec:related}
+
+\subsection{OOD Detection Methods}
+Table~\ref{tab:related} categorises prior work; surveys are in~\cite{yang2024generalized,hong2024out}. All methods collapse OOD and ADV into a single anomaly score; none provides a deployable second-stage separator. Szyc et al.~\cite{szyc2023ood} show that rankings are protocol-sensitive, motivating our multi-seed evaluation (Sec.~\ref{sec:setup}).
+
+\begin{table}[t]\centering\footnotesize
+\caption{\rev{\textbf{Prior anomaly detectors and their OOD--ADV separation capability.}
+All existing families fail at second-stage OOD-vs-ADV separation.
+$\dagger$~Viyog is the only method that scores both T2 and T3 above chance
+while remaining gradient-free and state-minimal.}}
+\label{tab:related}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
+\revtab
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Family & Examples & Score & Sep. OOD/ADV? & Cost \\
+\midrule
+Confidence & MSP, Energy, ODIN & logit & \xmark{} both high conf. & $O(1)$ \\
+Distance & Maha, KNN, ViM & feat. dist. & \xmark{} ADV inside manifold & $O(D^2)$--$O(ND)$ \\
+Uncertainty & MCD & post. var. & \xmark{} single score & $30{\times}$ fwd \\
+Joint & UNICAD~\cite{zhang2024splitting} & multi & partial & grad. at inf. \\
+\midrule
+\textbf{Viyog}$^\dagger$ & \textbf{this work} & \textbf{shape $V$} & \textbf{\cmark{} T2\,0.97\,/\,T3\,0.82} & \textbf{0.3\,KB} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Adversarial Attacks, Defences, and Early-Layer Effects}
+Having surveyed OOD scoring, we turn to the second anomaly class Viyog must
+separate from it.
+Adversarial attacks~\cite{szegedy2013intriguing} solve $\min_\delta\|\delta\|_p\;\text{s.t.}\;f(x{+}\delta,\theta)\neq y$.
+Common attacks include FGSM~\cite{goodfellow2014explaining},
+PGD~\cite{madry2017towards} (both $L_\infty$), and $L_2$-constrained
+CW~\cite{carlini2017towards} and DeepFool~\cite{moosavi2016deepfool}.
+A fundamental tension exists between robustness and accuracy~\cite{tsipras2018robustness,zhang2019theoretically}.
+
+Defences against adversarial attacks fall into several families:
+\emph{input preprocessing}~\cite{ziyadinov2023low},
+\emph{feature denoising}~\cite{xie2019feature},
+\emph{generative purification}~\cite{samangouei2018defense,nie2022diffusion,purify,silva2023diffdefense},
+and \emph{adversarial training}~\cite{madry2017towards,zhang2019theoretically}.
+Ensemble and Jacobian-based methods
+provide additional robustness but at increased inference cost.
+None of these defences address the OOD/ADV disambiguation problem; they
+assume the threat class is known in advance, precisely the assumption
+Viyog is designed to relax.
+
+Early-layer effects are well documented: the first convolutional layer is
+disproportionately critical for robustness~\cite{bakiskan2022early} and acts as
+an implicit noise filter~\cite{FLOD} (the front-neuron concept formalised here);
+pruning low-activation neurons improves robustness by forcing reliance on
+high-magnitude responses~\cite{dhillon2018stochasticactivationpruningrobust},
+and restoring suppressed activations~\cite{10640242} presupposes the suppression
+Viyog detects. Filter-statistic~\cite{li2017adversarial} and
+frequency-domain~\cite{wang2020high,wang2020towards} analyses likewise
+distinguish adversarial perturbations from natural shift at early layers, but
+none exploits the OOD/ADV asymmetry. We sharpen these into a formal Proposition
+(Section~\ref{sec:theory}): adversarial perturbations systematically suppress the
+highest-magnitude activations in the earliest convolutional layer, the geometric
+foundation of Viyog.
+
+\subsection{Joint OOD and Adversarial Detection}
+A small body of work attempts the OOD--ADV separation directly, but at a cost
+Viyog avoids.
+Zhang et al.~\cite{zhang2024splitting} address OOD--ADV separation via
+adversarial gradient attribution, requiring gradient computation at inference
+time. Feng et al.~\cite{feng2022unified} propose a unified open-world
+detection perspective but require joint training with anomaly labels.
+Walkowiak et al.~\cite{walkowiak2023combining} combine outlierness scores and
+feature extraction, while UNICAD~\cite{unicad} unifies attack detection and
+novel-class identification in a single framework.
+Detection methods based on feature statistics~\cite{li2017adversarial}
+and disentangled representations have also been proposed,
+but none provides a single gradient-free scalar operable as a plug-in second stage.
+Unlike gradient-attribution or
+joint-training approaches, Viyog operates in a single gradient-free forward
+pass and serves as a plug-in second stage atop any existing non-ID detector,
+without architectural modification. The Viyog statistic and its
+unsupervised OOD-vs-ADV threshold need no labelled anomaly data; the optional
+three-way head adds a lightweight supervised calibration over a small labelled
+set (Sec.~\ref{sec:results}). This efficiency
+advantage is quantified in the system analysis that follows.
+
+\subsection{System Efficiency and Deployment Motivation}
+For embedded systems inference cost is a primary
+constraint~\cite{10.1145/3626314}, yet prior detectors are expensive (ODIN and
+gradient-norm backward passes, a full Mahalanobis covariance, MCD's 30 forward passes ($\sim\!30\times$ a single inference), diffusion denoising). Viyog adds zero parameters, no
+gradient computation, and only a first-layer activation hook (read as a dormant-band shape statistic);
+the pipeline below grounds this in deployment.
+
+In the Viyog two-stage pipeline (Fig.~\ref{fig:pipeline}), a standard inference pass is followed by a first-stage non-ID detector that flags inputs outside the in-distribution region, and Viyog partitions them into OOD and ADV using only the first-layer activation hook already computed in the forward pass (read as the dormant-band roughness statistic $V$). Without this second stage, a system cannot distinguish a novel but benign environment from an active adversarial attack. Prior joint approaches~\cite{nie2022diffusion,samangouei2018defense} cannot make this distinction at deployable cost; the downstream routing consequences are detailed in Sec.~\ref{sec:discussion}.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_pipeline.pdf}
+\caption{\rev{\textbf{The Viyog two-stage deployment pipeline.}
+A normal forward pass drives a first-stage OOD gate (logit-based scores such as
+Energy~\cite{NEURIPS2020_f5496252} or MSP (Maximum Softmax Probability~\cite{hendrycks2016baseline}))
+and, via a zero-cost hook, exposes the first-conv activation map $a=f_0(x)$.
+Flagged inputs enter \emph{Viyog}, which computes $V(x)$---the
+dormant-band roughness (total-variation shape statistic) of $a$---and routes to
+\textbf{ID} (pass), \textbf{OOD} (abstain / flag), or \textbf{ADV} (reject /
+alert), adding only 0.3\,KB of state and no extra forward pass.}}
+\label{fig:pipeline}
+\end{figure}
+
+% =============================================================
+\section{Theoretical Motivation and Analysis}
+\label{sec:theory}
+
+We formalise why gradient attacks leave a detectable signature at the
+first layer, and prove the properties of the dormant-band roughness statistic $V(x)$
+(Prop.~\ref{prop:shape}) that make it the deployed detector: inflation under
+\emph{any} broadband attack, invariance to activation magnitude, and a concrete
+separation guarantee under three testable conditions validated by the empirical
+results of Section~\ref{sec:results}. The argument is rooted
+in the convolutional nature of the first layer shared by all architectures
+evaluated: strided convolutions in ResNet~\cite{he2016deep},
+DenseNet~\cite{huang2017densely}, and ConvNeXtV2~\cite{woo2023convnext};
+and patch-embedding projections (which are mathematically equivalent to
+strided convolutions) in ViT~\cite{dosovitskiy2020image} and
+Swin-T~\cite{liu2021swin}. The insight that high-frequency and norm-altering
+perturbations are concentrated at early layers is supported by prior
+frequency-domain analyses~\cite{wang2020high,wang2020towards,ziyadinov2023low}.
+
+\subsection{Why the First Layer?}
+\label{ssec:rawbaseline}
+
+\noindent\linelabel{LL:secIIIA}\textbf{Natural images are smooth at the first layer (Premise A1).}
+Natural image power spectra decay as $P(f)\!\propto\!f^{-2}$: low-frequency
+components (slow gradients, textures) dominate; rapid pixel-to-pixel oscillations
+are negligible.  Each first-layer channel $c$ produces a feature map
+$a_c\in\mathbb{R}^{H\times W}$---the response of filter $w_c$ to input $x$.
+Because natural images are spectrally smooth, $a_c$ is smooth too: its
+\emph{Total Variation} $\mathrm{TV}(a_c)$ (mean pixel-to-pixel jump, defined
+formally in Eq.~\eqref{eq:vdef}) is small relative to the channel's mean
+magnitude $\overline{|a_c|}$.  Crucially, this holds for \emph{all} natural
+inputs---both ID and OOD---since both are photographs of the physical world.
+
+\noindent\textbf{Adversarial attacks inject broadband high-frequency noise (Premise A2).}
+Gradient attacks add a perturbation $\delta$ to the input to maximally raise the loss.
+The loss gradient $\nabla_x\mathcal{L}$ carries energy at \emph{all} spatial
+frequencies; FGSM takes its elementwise sign to produce a $\pm\varepsilon$ broadband
+checkerboard pattern; PGD accumulates such steps.  The $L_\infty$ budget
+$\|\delta\|_\infty\!\le\!\varepsilon$ imposes no spectral shaping, so every frequency
+can independently saturate its $\varepsilon$ slot.  At the first layer, each filter
+$w_c$ convolves with $\delta$ to produce a \emph{per-channel residue}
+$e_c = w_c\!\ast\delta$---an additive high-frequency noise map.  Because $\delta$ is
+spectrally broadband, $e_c$ has \emph{high} Total Variation regardless of which
+specific attack generated $\delta$.
+
+\noindent\rev{\textbf{Why a normalised ratio, not a raw norm (0-homogeneity).}
+A raw $L_\infty$ norm measures \emph{magnitude}, not \emph{shape}.  OOD images
+can produce larger \emph{or} smaller first-layer activations than ID images, so
+$\|a_c\|_\infty$ is direction-inconsistent; an attacker can further append a
+norm-preserving penalty to keep $\|a_c'\|_\infty\!\approx\!\|a_c\|_\infty$ while
+misclassifying.  The normalised ratio
+$\widetilde{\mathrm{TV}}(a_c)=\mathrm{TV}(a_c)/(\overline{|a_c|}+\varepsilon)$
+(small $\varepsilon>0$ for stability) fixes both problems: TV and $\overline{|\cdot|}$
+are both 1-homogeneous, so their ratio is 0-homogeneous---scale-invariant (P1
+below).  An attacker who rescales activations cannot move $\widetilde{\mathrm{TV}}$;
+the only escape is to smooth $\delta$, conflicting with misclassification under a
+tight $\varepsilon$-budget.}
+
+
+
+
+\subsection{The Dormant-Band Roughness Statistic}
+\label{ssec:shape_theory}
+
+\noindent\textbf{The statistic.}
+Let $a = f_0(x) = W\!\ast x + b \in \mathbb{R}^{C\times H\times W}$ be the
+first-layer activation map ($C$ channels, spatial size $H{\times}W$), with
+$a_c \in \mathbb{R}^{H\times W}$ the feature map of channel $c$, filter $w_c$, and
+bias $b_c$.  Define:
+\begin{equation}
+\begin{aligned}
+V(x) &= \frac{1}{|\mathcal{B}|}\sum_{c\in\mathcal{B}}\widetilde{\mathrm{TV}}(a_c),
+\qquad
+\widetilde{\mathrm{TV}}(a_c)=\frac{\mathrm{TV}(a_c)}{\overline{|a_c|}+\epsilon},\\
+\mathrm{TV}(a_c) &= \tfrac12\bigl(\overline{|\Delta_h a_c|}+\overline{|\Delta_w a_c|}\bigr),
+\end{aligned}
+\label{eq:vdef}
+\end{equation}
+where $\Delta_h a_c[i,j]{=}a_c[i{+}1,j]{-}a_c[i,j]$ and
+$\Delta_w a_c[i,j]{=}a_c[i,j{+}1]{-}a_c[i,j]$ are pixel differences,
+$\overline{u}=\tfrac1{HW}\sum_{i,j}u_{ij}$ is the spatial mean,
+and $\epsilon=10^{-6}$ prevents division by zero.
+The \emph{dormant band} is
+$\mathcal{B}=\text{bottom-}p\%$ of \emph{alive} channels, where
+$\mathcal{A}=\{c:\mathbb{E}_{\mathrm{ID}}\overline{|a_c|}>\kappa\}$
+($\kappa=10^{-4}$) excludes permanently silent channels.
+
+Proposition~\ref{prop:shape} below formalises three properties of $V$.
+The dormant band amplifies each property: its small denominator $\overline{|a_c|}$
+magnifies any roughness numerator increase while leaving natural inputs bounded.
+\rev{Fig.~\ref{fig:mechanism} confirms this on real ResNet-50 features: $V(x)$
+separates by \emph{type of signal} (natural vs.\ attack), not by \emph{size} of
+activation.}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_mechanism.pdf}
+\caption{\rev{\textbf{The Viyog mechanism confirmed on real ResNet-50 features
+(CIFAR-100, $n{=}2000$ samples per class).}
+\textbf{(a)}~Dormant-band channels (bottom 10\% alive, green) have the smallest
+denominators, amplifying injected roughness.
+\textbf{(b)}~ID and OOD co-cluster at low $V(x)$; ADV-PGD spikes high (AUROC
+shown; dashed line~$=$ calibrated threshold).
+\textbf{(c)}~Scale-invariance (P1): doubling activation magnitude leaves $V$
+unchanged---only the adversarial roughness ratio is elevated.}}
+\label{fig:mechanism}
+\end{figure}
+
+\begin{proposition}[Relative-roughness inflation of a quiet affine channel]
+\label{prop:shape}
+Fix a dormant alive channel $c\in\mathcal B$ with filter $w_c$.  Write
+$a_c=w_c\!\ast x+b_c$ (clean feature map) with mean magnitude
+$\nu_c:=\overline{|a_c|}>0$.  For an adversarial input $x'=x+\delta$
+($x_{\mathrm{adv}}$; natural inputs written $x_{\mathrm{nat}}$), the
+per-channel residue $e_c=w_c\!\ast\delta$ is \emph{exact} by affineness
+(no Taylor or sign assumption).  Write $a_c'=a_c+e_c$,
+$r_c:=\overline{|e_c|}/\nu_c$ (relative residue size), and
+$\rho_c:=\mathrm{TV}(e_c)/\overline{|e_c|}$ (residue roughness).
+\rev{In plain words: $\nu_c$ is how loud the channel normally is, $r_c$ how large
+the attack's leftover is relative to that, $\rho_c$ how jagged that leftover is,
+and $\beta_c$ (below) the small natural-image jaggedness.}
+Assume three testable empirical premises:
+\begin{itemize}[leftmargin=2em]\setlength\itemsep{1pt}
+\item[\textbf{(A1)}] \emph{Natural smoothness:}
+  $\mathrm{TV}(a_c)\le\beta_c\nu_c$, $\beta_c\ll1$, for \emph{all} natural inputs
+  (ID and OOD)---the $1/f^2$ spectral roll-off (Sec.~\ref{ssec:rawbaseline}).
+\item[\textbf{(A2)}] \emph{Broadband residue:}
+  $\rho_c\ge\rho_{\min}>0$ on adversarial inputs---high-frequency injection
+  shared by FGSM/PGD/CW/DeepFool, decoupled from $\operatorname{sign}\nabla_x\mathcal L$.
+\item[\textbf{(A3)}] \emph{Non-negligible residue:}
+  $r_c\ge r_{\min}>0$ on adversarial inputs---the residue is detectable relative
+  to the dormant channel's quiet baseline.
+\end{itemize}
+Then:
+\begin{itemize}[leftmargin=2em]\setlength\itemsep{1pt}
+\item[\textbf{(P1)}] \emph{Scale-invariance (proven, exact):}
+  for any $\lambda_c>0$, $\widetilde{\mathrm{TV}}(\lambda_c a_c)=\widetilde{\mathrm{TV}}(a_c)$
+  at $\epsilon\to0$.  \emph{$V$ measures shape, not magnitude}: rescaling
+  activations via any norm penalty leaves $V$ unchanged.
+\item[\textbf{(P2)}] \emph{Two-sided bound (proven, attack-agnostic):}
+\[
+\frac{\rho_{\min}r_{\min}}{1+r_c}-\beta_c\;\le\;\widetilde{\mathrm{TV}}(a_c')\;\le\;\beta_c+\rho_c r_c+O(\epsilon/\nu_c).
+\]
+The residue satisfies the universal envelope
+$\mathrm{TV}(e_c)\le\|w_c\|_1\overline{\|\nabla\delta\|_1}$
+($\overline{\|\nabla\delta\|_1}$: spatial mean of $\delta$'s gradient magnitude;
+empirically ${\sim}2\times$ slack).
+\item[\textbf{(P3)}] \emph{ADV$>$OOD separation (conditional consequence):}
+if $\rho_{\min}r_{\min}>2\beta_c(1+r_c)$ on $\mathcal B$, then
+$V(x_{\mathrm{adv}})>V(x_{\mathrm{nat}})$ with per-channel margin
+$\tfrac{\rho_{\min}r_{\min}}{1+r_c}-2\beta_c\ge0$, increasing in $r_c$.
+\end{itemize}
+P1 and the P2 inequalities are \emph{proven}; P3 is a \emph{conditional consequence}
+of A1--A3 and is experimentally validated (T2 AUROC $\approx0.97$, T3 $\approx0.82$,
+20 architectures), not a worst-case guarantee.  Post-activation readouts
+(ReLU/GELU, $1$-Lipschitz) preserve P2; their curvature enters only the magnitude
+denominator, to which P1 makes $V$ insensitive.
+\end{proposition}
+
+\begin{proof}[Proof sketch (full proof in Appendix~\ref{app:affine})]
+\textbf{P1.} TV and $\overline{|\cdot|}$ are both 1-homogeneous, so
+$\widetilde{\mathrm{TV}}(\lambda a_c)=\frac{\lambda\,\mathrm{TV}(a_c)}{\lambda\,\overline{|a_c|}+\epsilon}\to\widetilde{\mathrm{TV}}(a_c)$ as $\epsilon\to0$.
+Consequence: the only escape for an attacker is to make $\delta$ smooth,
+conflicting with maximising the loss.
+
+\textbf{P2.} TV is subadditive and satisfies a reverse triangle inequality:
+\begin{align*}
+\mathrm{TV}(a_c+e_c)&\le\mathrm{TV}(a_c)+\mathrm{TV}(e_c),\\
+\mathrm{TV}(a_c+e_c)&\ge\mathrm{TV}(e_c)-\mathrm{TV}(a_c).
+\end{align*}
+Substitute A1 ($\mathrm{TV}(a_c)\le\beta_c\nu_c$) and A2
+($\mathrm{TV}(e_c)\ge\rho_{\min}r_c\nu_c$), divide by
+$\overline{|a_c'|}\le\nu_c(1+r_c)$ (from A3).
+
+\textbf{P3.} P2's lower bound minus A1's upper bound gives gap
+$\frac{\rho_{\min}r_{\min}}{1+r_c}-2\beta_c>0$.  Averaging over $\mathcal{B}$
+gives $V(x_{\mathrm{adv}})>V(x_{\mathrm{nat}})$.  OOD stays low because A1
+holds for all natural inputs and P1 prevents magnitude shifts from raising $V$.
+\end{proof}
+
+\noindent\textbf{In plain words.} Natural images (ID and OOD alike) leave first-layer
+dormant channels smooth and quiet---$V$ is low.  Adversarial $\delta$ injects a
+broadband rough residue $e_c=w_c\!\ast\delta$ that spikes $V$ on these channels
+(A2/A3).  P1 ensures norm-preserving tricks cannot suppress the spike.
+Viyog detects adversarials by thresholding $V$; OOD inputs fall below the
+threshold because A1 applies to all natural inputs.
+
+% =============================================================
+\section{The Viyog Method}
+\label{sec:method}
+
+\subsection{Step-by-Step Derivation and Motivation}
+The first design choice---reading at the first convolutional
+layer---follows directly from the theory of Section~\ref{sec:theory}; the
+remaining three (restricting to the dormant band, using a total-variation
+\emph{shape} statistic, and ID-only threshold calibration) are developed in the
+subsections that follow:
+
+\noindent\textbf{First convolutional layer.} The first
+convolutional layer is where the affine approximation holds
+most cleanly~\cite{bakiskan2022early,FLOD}, the per-channel bound
+(Eq.~\eqref{eq:affinebound} in Appendix~\ref{app:affine}) is exact, and---crucially---the adversarial residue
+has not yet been transformed or pooled.  The shape statistic $V$ peaks at the
+first conv (mean T2~$0.965$) and decays with depth; the first layer is therefore
+simultaneously the cheapest and the best layer for the deployed read
+(Fig.~\ref{fig:shape_depth}).
+
+
+Given this shape-based score, the routing rule is straightforward.
+
+\subsection{Decision Rule and Downstream Routing}
+\linelabel{LL:secIVB}Given a pool of non-ID inputs flagged by a first-stage detector, Viyog
+applies a second-stage partition:
+\begin{itemize}
+  \item $\mathrm{Viyog}(x)>\tau$: \textbf{ADV} --- apply adversarial
+    defence, rejection, or security alert.
+  \item $\mathrm{Viyog}(x)\le\tau$: \textbf{OOD} --- apply abstention,
+    fallback, or incremental-learning trigger.
+\end{itemize}
+A magnitude threshold allows
+precision--recall trade-offs. For the deployed Viyog statistic
+(Sec.~\ref{ssec:viyogd}) the OOD-vs-ADV threshold $\tau$ is calibrated ID-only
+(adversarials occupy the high-TV tail), so no held-out ADV data is needed
+(Alg.~\ref{alg:viyog}); the end-to-end gate uses the same statistic
+(Sec.~\ref{ssec:e2e}).
+
+\subsection{Dormant-Band Shape Statistic (Viyog)}
+\label{ssec:viyogd}
+\rev{The deployed statistic $V(x)=\mathrm{Viyog}(x)$ uses the dormant band}
+of Eq.~\eqref{eq:vdef}. Restricting it to \emph{active} channels is essential: up
+to $25/64$ first-conv channels are permanently silent (e.g.\ DenseNet-121) and
+would otherwise force a degenerate score. Across the 37-statistic battery $V$ tops
+\emph{both} the ID-vs-ADV and OOD-vs-ADV rankings (Fig.~\ref{fig:sig_ranking}).
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.84\columnwidth]{figs/rebuttal/fig_sig_ranking.pdf}
+\caption{\rev{First-conv signature ranking by ID-vs-ADV (T2) AUROC on ResNet-50
+(37 candidate statistics), \textbf{coloured by statistic family}.
+\emph{Magnitude/norm} statistics (orange)---including the raw $L_\infty$ norm
+(the original Viyog $L_\infty$-form baseline, annotated)---sit near chance ($0.50$--$0.53$).
+\emph{Shape} statistics (green)---total-variation (TV) and high-frequency (HF)
+roughness on the dormant channel band---are best-in-class ($\approx0.98$), with
+\textbf{Viyog} (TV dormant-band) ranked first.
+Distance/feature (blue), logit (yellow), and distributional (purple) statistics
+lie in between.
+This ranking motivates replacing the raw $L_\infty$-form with the TV
+dormant-band shape: it is channel \emph{shape}, not magnitude, that separates
+adversarial from natural inputs at the first layer.}}
+\label{fig:sig_ranking}
+\end{figure}
+
+
+
+\subsection{Algorithm and Complexity}
+Fig.~\ref{fig:viyog_diagram} provides a step-by-step visual walkthrough
+of the full Viyog pipeline with activation-map images at each stage.
+
+\begin{figure*}[tb]\centering
+\includegraphics[width=0.97\textwidth]{figs/rebuttal/fig_viyog_diagram.pdf}
+\caption{\rev{\textbf{How Viyog works, in five steps (one forward pass, no extra
+parameters).} \textbf{(1)}~Hook the first-conv activation map $a=f_0(x)$.
+\textbf{(2)}~Rank channels by mean ID activation; the quietest $10\%$ form the
+dormant band $\mathcal{B}$ (green). \textbf{(3)}~Read spatial roughness (total
+variation) on $\mathcal{B}$: clean channels are smooth (low TV), adversarial
+channels are jagged (high TV). \textbf{(4)}~Score $V(x)$, the mean normalized TV
+over $\mathcal{B}$: ID and OOD stay low, ADV spikes past the ID-calibrated
+threshold $\tau$. \textbf{(5)}~Route the input---ID passes, OOD abstains, ADV is
+rejected. Full method and routing rule in Sec.~\ref{sec:method}
+(Alg.~\ref{alg:viyog}).}}
+\label{fig:viyog_diagram}
+\end{figure*}
+
+\begin{algorithm}[tb]
+\caption{Viyog: Dormant-band shape statistic for OOD-vs-ADV separation}
+\label{alg:viyog}
+\begin{algorithmic}[1]
+  \Require Model $f$ with first affine layer $f_0$; calibration set
+    $\mathcal{D}$; band fraction $\rho{=}0.1$; test sample $x$
+  \State \textbf{Calibration} (once per model):
+  \State \quad $p_c \leftarrow \frac{1}{|\mathcal{D}|}\sum_{x\in\mathcal{D}}
+    \overline{|f_0(x)_c|}$ \Comment{per-channel ID mean activation}
+  \State \quad $\mathcal{A} \leftarrow \{c : p_c > 10^{-4}\}$
+    \Comment{drop permanently-dead filters}
+  \State \quad $\mathcal{B} \leftarrow$ bottom-$\rho$ of $\mathcal{A}$ by $p_c$
+    \Comment{dormant band}
+  \State \quad $\tau \leftarrow$ upper-quantile of $s$ on $\mathcal{D}$ at a
+    target $5\%$ ID-FPR \Comment{ID-only; no ADV labels}
+  \State \textbf{Inference} (per sample, single forward pass):
+  \State \quad $a \leftarrow f_0(x)$
+    \Comment{hook; no extra pass, no gradients}
+  \State \quad $s \leftarrow \frac{1}{|\mathcal{B}|}
+    \sum_{c\in\mathcal{B}} \widetilde{\mathrm{TV}}(a_c)$
+    \Comment{dorm-band roughness, Eq.~\eqref{eq:vdef}}
+  \If{$s > \tau$}
+    \State \Return \textbf{ADV} (reject / defend)
+      \Comment{high-frequency dorm-band residue}
+  \Else
+    \State \Return \textbf{OOD} (abstain / incremental learn)
+  \EndIf
+  \Statex \emph{Optional 3-way classifier:} fit a Linear Discriminant Analysis
+    (LDA) on a small labelled ID/OOD/ADV calibration set over the feature vector
+    $[\text{logit score},\,V(x),\dots]$. This adds $<$0.1\,KB of state and
+    returns a three-class ID/OOD/ADV decision (Sec.~\ref{sec:results}).
+    The unsupervised threshold above is the deployed default.
+\end{algorithmic}
+\end{algorithm}
+
+Algorithm~\ref{alg:viyog} summarises the deployed Viyog pipeline: calibration
+computes the per-channel ID profile and dormant band $\mathcal{B}$ once (a
+single calibration pass), and inference adds only
+$\mathcal{O}(|\mathcal{B}|\,h_1 w_1)$ operations and $O(C)$ stored state
+($\approx0.3$\,KB)---a negligible fraction of the forward pass and four to five
+orders of magnitude below the megabyte-scale state of feature-distance
+detectors. We now validate it against eleven baselines across twenty
+model--dataset configurations.
+
+% =============================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Datasets and Models}
+All experiments use two primary ID datasets: \textbf{CIFAR-100}~\cite{krizhevsky2009learning}
+($224{\times}224$, the main benchmark) and the safety-critical
+\textbf{GTSRB}~\cite{stallkamp2012man} ($224{\times}224$).
+Per-dataset OOD sets are drawn from SVHN~\cite{netzer2011reading}, iSUN, LSUN,
+and Places365; MNIST serves as a supplementary near-OOD probe for DenseNet.
+
+The model panel comprises \textbf{20 architectures} spanning every major
+design family: ResNet-18/34/50/101/152~\cite{he2016deep},
+DenseNet-121/161/169/201~\cite{huang2017densely},
+ConvNeXtV2~\cite{liu2022convnet}, ViT-B/16~\cite{dosovitskiy2020image},
+Swin-T~\cite{liu2021swin}, MobileNetV3-L, MobileNetV4-M,
+MobileOne-S1, EfficientNet-Lite0, EfficientNetV2-L,
+EfficientViT-B1, FastViT-SA12, and EdgeNeXt-Small---all
+fine-tuned from ImageNet pretraining in
+PyTorch~\cite{paszke2019pytorch} without adversarial augmentation.
+Training-seed confidence intervals (${\le}3$ seeds per architecture) are
+reported throughout; per-architecture std on T2 is ${\le}0.004$ (Fig.~\ref{fig:seed_forest}).
+
+\subsection{Attacks, Baselines, and Metrics}
+Four $L_\infty$ attacks span the threat model: FGSM~\cite{goodfellow2014explaining},
+BIM~\cite{kurakin2016adversarial}, PGD~\cite{madry2017towards}, and
+APGD-CE~\cite{croce2020reliable} via TorchAttacks~\cite{kim2020torchattacks} at
+$\varepsilon{=}8/255$. Eleven \texttt{pytorch-ood}~\cite{kirchheim2022pytorch}
+baselines---\textbf{MSP}, \textbf{Entropy}, \textbf{MaxLogit}, \textbf{Energy},
+\textbf{GEN}, \textbf{ODIN} ($T{=}1000$), \textbf{MCD} (30 passes), \textbf{Mahalanobis},
+\textbf{KNN}, \textbf{OpenMax}, \textbf{KL-Matching}---are compared on
+\textbf{AUROC}, \textbf{FPR@95TPR} (false-positive rate at 95\% true-positive rate), and \textbf{AUTC} (area under the threshold curve, critical for deployment where post-hoc tuning is infeasible).
+We evaluate three deployment tasks: \textbf{T1}~ID-vs-OOD, \textbf{T2}~ID-vs-ADV (the
+security task), and \textbf{T3}~OOD-vs-ADV (the second-stage routing task). A score is
+credited only when its separation \emph{direction} is consistent across all architectures
+(\emph{directionless AUROC}~\cite{szyc2023ood}); a score whose direction flips model-to-model
+is marked $\times$ (not deployable).
+
+\rev{\noindent\textbf{Experimental coverage.}
+Table~\ref{tab:coverage} lists every experiment run; all use the same
+directionless-AUROC protocol. Beyond the main detection sweep we add a
+layer-depth sweep (Fig.~\ref{fig:shape_depth}), a \emph{measured} on-silicon cost
+benchmark against all eleven baselines
+(Figs.~\ref{fig:baselines_cost},~\ref{fig:onsilicon}), a 20-architecture adaptive
+ladder with an EOT stochastic-band defence (Sec.~\ref{sec:adaptive},
+Fig.~\ref{fig:adaptive_ladder}), full-20 training-seed CIs
+(Fig.~\ref{fig:seed_forest}), and a 1D non-vision sanity check
+(Appendix~\ref{app:nonvision}).}
+
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.1}
+\caption{\rev{\textbf{Experimental coverage}---everything evaluated, all under the
+directionless-AUROC protocol.}}
+\label{tab:coverage}
+\revtab
+\begin{tabular}{@{}p{2.45cm}p{3.15cm}p{1.85cm}@{}}
+\toprule
+Experiment & Coverage & Measures \\
+\midrule
+Detection T1/T2/T3 & 3 datasets $\times$ 20 archs $\times$ 4 attacks $\times$ 11 detectors & AUROC, FPR@95, AUTC \\
+Measured cost & CIFAR-100, H200 (CUDA events) & latency, mem, energy \\
+Layer-depth sweep & 6 archs $\times$ 2 attacks $\times$ all depths & T2/T3 vs.\ depth \\
+Adaptive A0--A3, EOT & 20 archs; norm/TV-aware $+$ stochastic & evasion \%, AUROC \\
+Strong adaptive A4 & 6 archs (C100$+$GTSRB), held-out basis & detector floor \\
+Training-seed CIs & 20 archs $\times$ ${\le}3$ seeds & T2/T3 std \\
+Non-vision sanity & 1D signals, FGSM/PGD & T2 AUROC \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =============================================================
+\section{Results and Discussion}
+\label{sec:results}
+
+\subsection{Detection Quality Across 20 Architectures}
+\rev{\linelabel{LL:secVIA}With the evaluation protocol of Sec.~\ref{sec:setup} fixed, we first report
+raw detection quality across all 20 backbones.}
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=0.88\columnwidth]{figs/rebuttal/fig_detection_quality.pdf}
+  \caption{\rev{Detection quality across the 20
+    CIFAR-100 architectures, by task and method family. Viyog leads on both security tasks---\textbf{T2~0.966} (ID-vs-ADV) and \textbf{T3~0.824} (OOD-vs-ADV)---while logit detectors
+    win the T1 ID/OOD task ($0.85$) and feature-distance detectors trail on T3 ($0.69$--$0.71$).
+    Tasks are scored
+    \emph{directionlessly}, not the earlier far-OOD single-direction average. \emph{At a
+    strict $5\%$-FPR point mean ADV recall is $0.345$ (median $0.278$)---near-zero
+    on ViT-B/EdgeNeXt, a caveat the cascade (Sec.~\ref{ssec:e2e}) addresses.}}}
+  \label{fig:avg_auroc}
+\end{figure}
+
+\rev{Under the strict directionless 20-architecture protocol (Table~\ref{tab:main_results}, Fig.~\ref{fig:avg_auroc}), Viyog leads on both the security task T2} (\textbf{0.966}) and
+the deployment task T3 (\textbf{0.824}) at $\approx0.3$\,KB; every logit baseline is
+near-chance on T2; a three-way supervised head reaches \textbf{0.798} balanced accuracy
+(Fig.~\ref{fig:compl}). \rev{The T3 signal is consistent across all 20 architectures, four attacks, and three datasets (Fig.~\ref{fig:t3_breakdown})}; GTSRB confirms the
+result is architecture- and dataset-stable.
+
+
+\begin{figure*}[t]\centering
+\includegraphics[width=0.85\textwidth]{figs/rebuttal/fig_complementarity.pdf}
+\caption{\rev{\textbf{Combining a logit detector with Viyog yields three-way
+ID/OOD/ADV separation---each covers the other's blind spot.} Logit detectors
+(Energy) catch low-confidence OOD but are blind to high-confidence adversarials;
+Viyog catches adversarials (dormant-band roughness) but is weak on smooth OOD.
+\textbf{(a)}~Per-class recall (CIFAR-100, 20 archs): Energy alone $0.45$ on ADV,
+Viyog alone $0.29$ on OOD; the \emph{Energy\,+\,Viyog} pair raises 3-way balanced
+accuracy to $\mathbf{0.757}$ and the full panel to $\mathbf{0.798}$.
+\textbf{(b)}~Gain transfers to GTSRB: full panel $\mathbf{0.863}$, logit$+$Viyog
+$0.768$; bootstrap 95\% CIs are \emph{disjoint} (full-panel $[0.77,\!0.83]$ vs.\
+Energy-only $[0.58,\!0.65]$). Viyog adds adversarial detection to any deployed
+logit OOD detector with no retraining, no extra forward pass, $0.3$\,KB state.}}
+\label{fig:compl}
+\end{figure*}
+
+\rev{The failure modes are complementary: logit scores collapse on T2} (blind to
+high-confidence adversarials), while feature-distance detectors (Mahalanobis,
+KNN) trail on T3, having pulled perturbations back toward the ID manifold at deep
+layers~\cite{lee2018simple}. Only the first-conv \emph{shape} statistic separates
+both (Sec.~\ref{ssec:rawbaseline}).
+
+\begin{table}[t]
+\centering
+\caption{\rev{\textbf{New directionless re-evaluation across 20 CIFAR-100
+architectures} (replaces the original far-OOD per-row table).
+\emph{Setup:} directionless evaluation across 20 architectures (T1/T2/T3 as defined in Sec.~\ref{sec:setup}). \emph{Metric:} mean AUROC\,/\,FPR@95TPR (\%). $\times$~=~direction-inconsistent (score cannot be deployed); best AUROC per column in \textbf{bold}; \colorbox{viyoggreen!16}{shaded row}~=~deployed detector; state memory in last column.
+\emph{Highlights:} every logit baseline is direction-inconsistent and near-chance
+on the security task T2, and the original raw Viyog $L_\infty$ is itself
+direction-inconsistent here, whereas the deployed \textbf{Viyog} is best on
+both T2 (\textbf{0.966}) and the deployment task T3 (\textbf{0.824}) at
+$\approx0.3$\,KB. \emph{Impact:} the deployable signal is carried by first-conv
+\emph{shape}, not magnitude or logits.}}
+\label{tab:main_results}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\footnotesize
+
+\resizebox{\columnwidth}{!}{%
+\revtab
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{3}{c}{AUROC\,/\,FPR@95TPR (\%)} & \\
+\cmidrule(lr){2-4}
+Method & T1 ID/OOD & T2 ID/ADV & T3 OOD/ADV & State \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Logit baselines (\texttt{pytorch-ood})}}\\
+Energy & \textbf{0.847} / 59.8 & 0.414\,$\times$ / 98.3 & 0.789 / 81.6 & 4\,B \\
+MSP & 0.736\,$\times$ / 58.0 & 0.360\,$\times$ / 88.7 & 0.795 / 81.1 & 4\,B \\
+MaxLogit & 0.767\,$\times$ / 60.0 & 0.384\,$\times$ / 88.8 & 0.793 / 80.8 & 4\,B \\
+Entropy & 0.745\,$\times$ / 58.1 & 0.357\,$\times$ / 88.9 & 0.801 / 79.6 & 4\,B \\
+GEN & 0.745\,$\times$ / 59.3 & 0.340\,$\times$ / 88.9 & 0.809 / 78.8 & 4\,B \\
+KL-Match & 0.258\,$\times$ / 59.2 & 0.623\,$\times$ / 88.6 & 0.798 / 79.3 & 4\,B \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{First-layer statistics (ours)}}\\
+FirstConv-$L_\infty$ (baseline) & 0.602\,$\times$ / 88.8 & 0.559\,$\times$ / 80.5 & 0.448\,$\times$ / 75.7 & 8\,B \\
+Viyog-HF (high-freq.\ dorm.) & 0.759 / 75.8 & 0.937 / 28.0 & 0.754 / 61.4 & 0.3\,KB \\
+\rowcolor{viyoggreen!16}\textbf{Viyog} (deployed) & 0.690 / 87.0 & \textbf{0.966} / 13.9 & \textbf{0.824} / 45.5 & \textbf{0.3\,KB} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\rev{The headline separation is a property of the dormant-band statistic, not a
+lucky seed; the reproducibility concern is resolved at full-panel scale
+(Fig.~\ref{fig:seed_forest}).}
+
+\begin{figure}[tb]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_seed_forest_new.pdf}
+\caption{\rev{\textbf{Training-seed reproducibility across the full 20-architecture panel.}
+Per-architecture mean~$\pm$~std (circles), individual seeds (faint crosses), panel
+mean (vertical line), $\pm1$ overall std (band).
+\textbf{(a)}~T2 seed std $\le0.004$ across all 20 backbones---an order of magnitude
+below the cross-architecture spread (ViT-B the semantic-token outlier).
+\textbf{(b)}~T3 similarly stable (std $\le0.06$).}}
+\label{fig:seed_forest}
+\end{figure}
+
+\begin{figure*}[tb]\centering
+\includegraphics[width=0.96\textwidth]{figs/rebuttal/fig_t3_breakdown.pdf}
+\caption{\rev{\textbf{The OOD-vs-ADV (T3) signal is consistent across
+architectures, attacks, and datasets.}
+\textbf{(a)}~Per-architecture T3 AUROC on all 20 CIFAR-100 backbones (mean
+$0.82$, range $0.65$--$0.95$, every backbone above chance).
+\textbf{(b)}~T3 across four attacks (FGSM, BIM, PGD, APGD-CE) and three datasets,
+weakest case $\ge0.77$.
+\textbf{(c)}~Viyog matches the strongest logit detector (GEN) within $\pm0.02$ at
+$0.3$\,KB and no extra forward pass, yet stays complementary to it
+(Fig.~\ref{fig:compl}).}}
+\label{fig:t3_breakdown}
+\end{figure*}
+
+\subsection{Near-OOD Difficulty and Shape-Depth Optimality}
+\label{ssec:norm_sweep}
+\rev{\linelabel{LL:secVIB}Having established overall separation, we break the T3 result by OOD difficulty and confirm that the first conv is globally optimal for the shape read. ID and OOD produce smooth dormant channels; adversarial perturbations leave high-frequency residue---the shape statistic separates ADV from ID/OOD at $O(C)$ cost (Fig.~\ref{fig:viyogd_sig}, Appendix~\ref{app:affine}).
+
+\emph{Harder near-OOD and texture splits.} Because near-distribution or
+texture-biased OOD may themselves perturb early activations, we break the
+17-architecture OOD-vs-ADV (T3) result by difficulty. Deployed Viyog holds
+far-OOD ($0.96$) and degrades gracefully but stays above chance on near-OOD
+($0.74$ mean, up to $0.95$) and texture-OOD ($0.67$); near-OOD is indeed the
+harder regime. The residual gap is \emph{complementary}
+(Fig.~\ref{fig:ood_difficulty}): a high-frequency
+dorm-band read recovers texture-OOD to $0.92$ where the total-variation read is
+weakest, so pairing Viyog with a second early-layer statistic closes the
+texture case. The first conv is globally optimal for $V$: on the six-architecture depth sweep the shape read peaks at depth~0 (mean T2~$0.965$, T3~$0.918$; the slightly higher T3 than the 20-arch panel mean $0.824$ reflects the easier six-model subset) and decays with depth, while a raw-norm oracle across all depths still scores below it (Fig.~\ref{fig:shape_depth})---no adaptive layer selector is needed.}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_shape_depth.pdf}
+\caption{\rev{\textbf{The first conv is the \emph{optimal} layer for the deployed
+shape read---adaptive layer selection is unnecessary.} ID-vs-ADV (T2) AUROC of
+the dormant-band shape statistic $V$ and of the raw $L_\infty$ statistic at every
+depth, averaged over six architectures (ResNet-50, DenseNet-121, MobileNetV3,
+ConvNeXtV2, Swin-T, ViT-B) and two attacks (PGD, APGD). The shape read (green)
+peaks at the first conv (mean \textbf{0.965}) and decays with depth, whereas the
+raw norm (red) is weakest there (\textbf{0.52}) and peaks only deep
+(\textbf{0.80}, depth~6). The first-conv shape read beats the best raw-norm layer
+at \emph{any} depth---the cheapest layer is also the best.}}
+\label{fig:shape_depth}
+\end{figure}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_ood_difficulty.pdf}
+\caption{\rev{\textbf{Viyog is a complementary \emph{panel}, not a single
+statistic: paired early-layer reads separate ADV from every OOD difficulty.}
+OOD-vs-ADV (T3) AUROC on the 17-architecture CIFAR-100 panel (mean~$\pm$~std),
+split by OOD \emph{difficulty}: \emph{far} (a different dataset), \emph{near}
+(a semantically similar shift), and \emph{texture} (texture-biased). The
+deployed dormant-band total-variation read (Viyog-D, green) is strongest on
+far/near-OOD but weakest on texture; its high-frequency complement (HF, blue)
+is the mirror image. Taking the per-architecture better of the two
+(Panel, amber) clears \textbf{0.76}--\textbf{0.97} across all three
+difficulties, recovering texture-OOD from \textbf{0.67} to \textbf{0.92}, while
+the raw $L_\infty$ magnitude norm (grey) stays near chance ($0.5$)
+throughout---the separable signal is first-conv \emph{shape}, not magnitude.}}
+\label{fig:ood_difficulty}
+\end{figure}
+
+\subsection{Computational Efficiency}
+\rev{\linelabel{LL:secVIC}Having shown the first-conv read is the most \emph{accurate} detector, we
+now show it is also the \emph{cheapest}.}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.82\textwidth]{figs/rebuttal/fig_baselines_cost.pdf}
+  \caption{\rev{\textbf{Measured second-stage detection cost versus every
+    \texttt{pytorch-ood} baseline} (CIFAR-100; mean over ResNet-50, MobileNetV3
+    and DenseNet-121, wall-clock with CUDA sync on one H200). \textbf{(a)}~Per-image
+    detection latency (log scale): Viyog reads only the first conv plus an $O(C)$
+    reduction (\textbf{0.05\,ms/img}), so it is $\sim\!6\times$ faster than the
+    logit detectors MSP/Energy, $9$--$21\times$ faster than ViM/Mahalanobis,
+    $140\times$ faster than KNN, and $347\times$ faster than MC-Dropout (30 forward
+    passes). \textbf{(b)}~Latency--memory
+    Pareto (log--log): Viyog sits alone in the lower-left corner, storing $0.23$\,KB against
+    the $9$--$28$\,MB covariance/feature-bank of the distance detectors
+    ($10^4$--$10^5\times$ smaller). \emph{Impact:} the detector with the best
+    ADV--OOD separation (Table~\ref{tab:main_results}) is \emph{also} the cheapest to
+    run and to store, by orders of magnitude --- and the time advantage is now
+    \emph{measured}, not inferred from complexity order.}}
+  \label{fig:baselines_cost}
+\end{figure*}
+
+Figs.~\ref{fig:baselines_cost}--\ref{fig:onsilicon} and Table~\ref{tab:edge}
+quantify the cost: Viyog uses $0.3$\,KB and $2.83\%$ of CNN MACs with no extra
+forward pass, runs $6$--$347\times$ faster than all baselines (H200, CUDA events),
+and draws $3.8\%$ of inference latency and $12\%$ of energy --- the best-separating
+detector is also the cheapest by orders of magnitude.
+
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{\rev{Second-stage detector cost
+(architecture-derived). State is $O(C)$ for the first-layer detectors versus
+$O(D^2)/O(ND)$ for feature-distance methods. The optional ``LDA head'' is a
+tiny linear discriminant fit over the detector scores that turns the binary
+detector into a 3-class ID/OOD/ADV classifier ($K{=}3$), adding ${<}0.1$\,KB and
+no extra forward pass.}}
+\label{tab:edge}
+\revtab
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Detector & State & Extra fwd & Order \\
+\midrule
+Energy/MSP (logit) & 4\,B & 0 & $O(1)$\\
+FirstConv-$L_\infty$ (baseline) & 8\,B & 0 & $O(1)$\\
+\rowcolor{viyoggreen!16}\textbf{Viyog} (deployed) & $\approx$\textbf{0.3\,KB} & 0 & $O(C)$\\
+\quad$+$ LDA head (3-class, $K{=}3$) & $+{<}0.1$\,KB & 0 & $O(CK)$\\
+Mahalanobis\,/\,ViM & 4.5--17\,MB & 1 & $O(D^2)$\\
+KNN & 20--40\,MB & 1 & $O(ND)$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figs/rebuttal/fig_onsilicon.pdf}
+\caption{\rev{\textbf{Measured on-silicon detector cost and edge projection
+(closes the on-device request).} \textbf{(a)}~Per-architecture cost of the
+deployed $V(x)$ detector as a fraction of full inference: the exact MAC fraction
+(mean $2.83\%$) and the \emph{measured} batch-$1$ latency on an H200 (CUDA events;
+mean $3.8\%$) agree, confirming a single-digit-\% second-stage tax on real
+silicon across CNNs, a ViT, and a ConvNeXt. \textbf{(b)}~Compute-bound roofline
+projection of the detector's per-image energy on real edge accelerators (Jetson
+Orin Nano, RPi5\,$+$\,Hailo-8L): $19$--$37\,\mu$J versus a $0.6$--$1.2$\,mJ full
+inference. Energy scales with active-compute time, so the energy fraction follows
+the latency fraction; absolute roofline figures are optimistic lower bounds, but
+the \emph{fraction} is device-independent.}}
+\label{fig:onsilicon}
+\end{figure}
+
+Together the AUROC, AUTC, latency,
+and memory results show Viyog's first-layer design gives the best ADV--OOD
+separation at the lowest cost. We next stress-test the detector against an
+adaptive adversary.
+
+% =============================================================
+\section{Adaptive Attack Evaluation}
+\label{sec:adaptive}
+
+A rigorous adversarial evaluation must include an adaptive adversary who
+knows the detection mechanism and specifically targets it.
+
+\noindent\textbf{Threat model.} The attacker aims at \emph{both}
+misclassification and detector evasion under $L_\infty$, $\varepsilon{=}8/255$.
+Fig.~\ref{fig:adaptive_ladder} shows the full A0--A3 knowledge ladder; the
+defender's hook, band $\mathcal{B}$, and threshold $\tau$ are fixed at deployment.
+
+\subsection{Adaptive Attack Formulation}
+A norm-aware attacker knowing that Viyog monitors first-layer $L_\infty$
+norms would optimise perturbations to preserve these norms while inducing
+misclassification. We formalise this as an augmented PGD objective:
+\begin{equation}
+  \mathcal{L}_{\mathrm{adap}} =
+  \mathcal{L}_{\mathrm{CE}}\bigl(f(x+\delta),y\bigr)
+  + \lambda\,\bigl(\|f_0(x+\delta)\|_\infty - \|f_0(x)\|_\infty\bigr)^2,
+  \label{eq:adaptive_loss}
+\end{equation}
+where $\lambda>0$ controls the penalty strength; we sweep $L_\infty$/$L_2$/combined
+modes ($\varepsilon{=}8/255$, $\alpha{=}2/255$, 10 PGD steps) and confirm all ten
+standard attacks suppress first-layer norms without special treatment.
+
+\subsection{Results and Security Implications}
+
+\rev{\linelabel{LL:secVIIB}The ladder of Fig.~\ref{fig:adaptive_ladder} measures what each rung of
+attacker knowledge costs---from black-box PGD (A0) through a both-aware adaptive
+adversary (A3) to a stochastic-band defence (EOT).}
+
+\begin{figure*}[tb]\centering
+\includegraphics[width=0.96\textwidth]{figs/rebuttal/fig_adaptive_ladder.pdf}
+\caption{\rev{\textbf{Defence-in-depth against an escalating adaptive adversary (mean over 20 architectures).}
+Attacker knowledge grows left-to-right: A0~(PGD), A1~norm-preserving, A2~TV-aware
+(white-box), A3~both-aware, EOT~stochastic defence.
+\textbf{(a)}~A1 achieves \textbf{0\% evasion} (P1); A2 erodes $V$ to $0.64$ while
+the complement holds at $0.74$; EOT restores $V$ to \textbf{0.82}; A3 suppresses
+both only at an \textbf{8\% attack-success cost}.
+\textbf{(b)}~EOT scatter: \textbf{18/20 architectures} above the diagonal confirm
+stochastic band-randomisation as the reliable system-level backstop.}}
+\label{fig:adaptive_ladder}
+\end{figure*}
+
+With the penalty active, $\|f_0(x_{\mathrm{adap}})\|_\infty\approx\|f_0(x)\|_\infty$,
+keeping the raw score in-distribution, yet the dormant-band \emph{shape} read is
+unmoved. The A0--A3 ladder (Fig.~\ref{fig:adaptive_ladder}) shows no single
+statistic is load-bearing: norm-preserving A1 gives \textbf{0\% evasion} (P1), and
+only the both-aware A3 suppresses every signature---at a measurable \textbf{8\%}
+attack-success cost.
+
+\emph{The result holds on a second dataset.} On GTSRB (ResNet-50,
+ConvNeXtV2, ViT-B) at max penalty $\lambda$, the both-aware attacker keeps
+$\ge\!80\%$ success yet the combined $\max(\textrm{dorm},\textrm{HF})$ detector
+never drops below AUROC $0.775$: single-channel evasion is always backstopped by
+the complement (ResNet-50 dorm $0.83\!\to\!0.51$ but HF stays $0.72$; ConvNeXtV2
+dorm-suppression costs $80\%$ of success). The attacker thus either keeps the
+detector $\ge\!0.775$ or surrenders most of its success---on both datasets.
+
+\emph{Evasion requires a unique and costly modification.} All these standard
+(A0) attacks~\cite{goodfellow2014explaining,madry2017towards,croce2020reliable,carlini2017towards,moosavi2016deepfool}
+naturally suppress first-layer norms and are detected; only the bespoke penalty
+of Eq.~\eqref{eq:adaptive_loss} defeats the norm, a far higher barrier than
+off-the-shelf methods~\cite{kim2020torchattacks}. This is not an empirical
+quirk: by the first-layer mechanism (Sec.~\ref{ssec:rawbaseline}), any gradient-based optimisation
+suppresses the high-influence channels through the Jacobian, so the attacker must
+explicitly counteract it with an added loss term.
+
+\emph{$L_\infty$ evasion yields a safer failure mode.} Evading the global
+$L_\infty$ score---the only signature a norm-preserving attack defeats (above)---lifts
+the sample's norm into the ID or OOD regime, so the system classifies it
+as ID/OOD and abstains or seeks review rather than silently acting on a
+corrupted prediction---strictly safer than an undetected adversarial.
+
+\subsection{The Robustness--Evasion Trade-Off}
+The norm-preservation and misclassification objectives compete: budget spent
+preserving the convolutional norm is budget unavailable for misclassification,
+so matching standard-PGD success under the constraint requires a larger
+$\varepsilon$ or more iterations---the measurable $8\%$ success cost of the
+both-aware attack above. This trade-off is fundamental to the shared Jacobian
+structure of Eq.~(\ref{eq:affinebound}) and cannot be circumvented by gradient masking.
+A stronger held-out-basis (A4) attacker that re-optimises its perturbation
+basis directly against the deployed statistic does not change this conclusion
+(see Appendix~\ref{app:affine}, Fig.~\ref{fig:adaptstrong}): the same trade-off holds, with ${\sim}15\%$ of
+attack success surrendered to floor both signatures above chance.
+With adaptive robustness established, the next section shows the
+norm-suppression phenomenon generalises beyond CNNs.
+
+
+
+% =============================================================
+\section{Generalisation Beyond CNNs}
+\label{sec:beyond_cnn}
+
+The theoretical argument of Section~\ref{sec:theory} requires only a
+near-linear first projection and gradient-based norm suppression; it is not
+specific to convolutional architectures. We verify empirically on three
+architecturally distinct models fine-tuned on CIFAR-100 at $224\times224$
+resolution from ImageNet-21k pretrained weights.
+
+\textbf{ConvNeXtV2-Base}~\cite{woo2023convnext},
+\textbf{ViT-B/16}~\cite{dosovitskiy2020image}, and
+\textbf{Swin-T}~\cite{liu2021swin} span depthwise-convolutional, pure
+self-attention, and hierarchical shifted-window designs; in every case the
+first layer is an affine strided-convolution or patch-embedding map (ConvNeXtV2
+$4{\times}4$ conv, ViT-B $16{\times}16$ and Swin-T $4{\times}4$ patch embeddings)
+satisfying Eq.~(\ref{eq:affinebound}) exactly at the
+\emph{pre-activation} stage (the deployed statistic is read post-activation
+and carries the bounded GELU/ReLU remainder of Appendix~\ref{app:affine}).
+
+On all three, the deployed dormant-band roughness $V(x)$ separates ADV from
+ID/OOD as in the $32\times32$ CNN results, and the separation is
+seed-invariant (per-architecture training-seed CIs, Sec.~\ref{ssec:limitations}) and
+stable across datasets under evaluation resampling (Fig.~\ref{fig:seed_forest}),
+addressing the reliability concern of Szyc et al.~\cite{szyc2023ood}.
+
+
+
+The generalisation is therefore \emph{structural}: every model begins with a
+learned near-linear first projection, so the signal survives even the implicit
+robustness of large-scale pretraining and is not an artefact of fragile
+undefended models. \rev{Having established the detector's accuracy, cost,
+adaptive robustness, and cross-architecture reach, we now turn it into an
+operational three-way classifier.}
+
+% =============================================================
+\section{Downstream Utility: Three-Way Classification}
+\label{sec:discussion}
+
+Viyog turns a binary anomaly detector into a three-way ID/OOD/ADV classifier,
+an operational distinction that diagnostic metrics (AUROC, FPR) do not capture:
+without it a system must apply one response to all non-ID inputs---wasting
+adversarial purification~\cite{nie2022diffusion,purify,silva2023diffdefense}
+or feature-denoising~\cite{xie2019feature} on benign OOD, or leaving attacks
+undetected. Beyond these binary routing cases, in
+class-incremental learning~\cite{rebuffi2017icarl,cao2025class}
+OOD inputs should feed back as new classes while ADV inputs must not contaminate
+training.
+
+\subsection{End-to-End Cascade and False-Positive Propagation}
+\label{ssec:e2e}
+\rev{\linelabel{LL:secIXA}We evaluate the full two-stage pipeline (non-ID gate $\to$ Viyog)} over 17
+architectures $\times$ 10 seeds at a matched $5\%$ ID-FPR
+(Table~\ref{tab:e2e}, Fig.~\ref{fig:cascade_e2e}).
+
+\begin{figure}[tb]\centering
+\includegraphics[width=0.95\columnwidth]{figs/rebuttal/fig_cascade_e2e.pdf}
+\caption{\rev{End-to-end two-stage cascade over all
+17 architectures at a matched $5\%$ ID-FPR. \textbf{(a)}~Energy-only gate: mean
+ADV recall $0.16$; two-signal gate ($\max(z_{\mathrm{energy}},|z_{\mathrm{dorm}}|)$, where $z_X$ denotes the normalised score for statistic $X$):
+mean $0.84$. \textbf{(b)}~ID$\to$ADV mis-escalation stays $\le\!0.001$.}}
+\label{fig:cascade_e2e}
+\end{figure}
+
+A logit (Energy) gate is itself \emph{blind to adversarials}---they are
+confidently wrong---so end-to-end ADV recall is only $0.156$. Adding the
+near-free first-conv deviation to the gate
+($\max(z_{\mathrm{energy}},|z_{\mathrm{dorm}}|)$, same $5\%$ ID-FPR) lifts it to
+$\mathbf{0.835}$ (mean over $16/17$ architectures; the weakest are ViT-B
+$0.21$---its patch-embedding has no dormant low-activation band---fastvit $0.62$
+and ResNet-50 $0.73$, while OOD recall holds at $\approx0.41$)
+with ID$\to$ADV mis-escalation $\to0$: one first-conv statistic
+both flags non-ID ($|z|$) and routes OOD-vs-ADV (sign). For false-positive
+\emph{propagation}, Viyog escalates a wrongly-flagged ID input to the ADV
+class only $\mathbf{5.2\%}$ of the time (median $0$; exactly $0$ on $14/17$
+architectures) versus $51$--$82\%$ for logit/$L_\infty$---mitigating rather than
+amplifying upstream errors.
+
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{\rev{End-to-end two-stage recall at a matched
+$5\%$ ID false-positive rate (mean over 17 archs $\times$ 10 seeds). A two-signal
+gate that adds the first-conv deviation closes the adversarial-recall gap with
+zero mis-escalation.}}
+\label{tab:e2e}
+\revtab
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Stage-1 gate & ADV recall & OOD recall & ID$\to$ADV\\
+\midrule
+Energy only & 0.156 & 0.343 & 0.002\\
+Energy $\oplus$ dorm-$z$ (2-signal) & \textbf{0.835} & 0.412 & \textbf{0.000}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{figure}[tb]\centering
+\includegraphics[width=0.84\columnwidth]{figs/rebuttal/fig_viyogd_signature.pdf}
+\caption{\rev{\textbf{The dormant-band signature (supplementary).}
+Per-image dormant-band TV profile for ID (green), OOD (blue), and adversarial
+(red) inputs on ResNet-50 (CIFAR-100, five OOD sets, PGD attack). ID and OOD
+share a low, smooth profile; adversarials inject high-frequency structure,
+separating at AUROC~$0.91$.}}
+\label{fig:viyogd_sig}
+\end{figure}
+
+\begin{figure}[tb]\centering
+\includegraphics[width=0.88\columnwidth]{figs/rebuttal/fig_adaptive_strong.pdf}
+\caption{\rev{\textbf{Strong adaptive frontier---held-out basis (6 archs).}
+An A4 attacker that re-optimises its perturbation basis directly.
+Dorm/HF mean \textbf{0.86}/\textbf{0.79} (min $0.54$/$0.53$); only the
+both-aware objective suppresses both to $\approx$\textbf{0.62} at a
+\textbf{15\%} attack-success cost, confirming the A3 trade-off holds at
+stronger attack strength.}}
+\label{fig:adaptstrong}
+\end{figure}
+
+\begin{figure}[tb]\centering
+\includegraphics[width=0.82\columnwidth]{figs/rebuttal/fig_nonvision.pdf}
+\caption{\rev{\textbf{Dormant-band shape transfers to 1D signals.}
+ID-vs-ADV AUROC of $V(x)$ (green) vs.\ raw $L_\infty$ (red) at the first
+\texttt{Conv1d} layer for FGSM/PGD at two budgets ($n{=}1{,}500$, 3 seeds).
+Shape holds at $0.95$--$1.00$ while the raw norm stays near chance.}}
+\label{fig:nonvision}
+\end{figure}
+\subsection{Limitations and Future Work}
+\label{ssec:limitations}
+\rev{\linelabel{LL:secIXB}While Viyog addresses the core OOD-vs-ADV separation problem, six boundary
+conditions remain. Three are \textbf{resolved} in this revision (multi-seed
+reproducibility, non-vision generality, and adaptive robustness); two are
+\textbf{open} by design scope (physical attacks attenuated by the camera ISP,
+and on-board edge measurements); and one is a \textbf{benign} artefact
+(DenseNet-121 dead-channel degeneracy on MNIST, fixed by active-channel
+selection). Table~\ref{tab:limits} summarises each item with its current status.}
+
+\begin{table}[t]\centering\footnotesize
+\caption{\rev{\textbf{Limitations and status.} Camera-ready items are committed;
+addressed items are validated in the cited figures/sections.}}
+\label{tab:limits}
+\setlength{\tabcolsep}{3pt}
+\revtab
+\begin{tabular}{@{}p{1.9cm}p{3.0cm}l@{}}
+\toprule
+Limitation & Detail & Status \\
+\midrule
+(i) Seeds & T2 std $\le\!0.004$ across all 20 archs & \textbf{resolved} (Fig.~\ref{fig:seed_forest}) \\
+(ii) MNIST & Low-complexity images; affects T1 path only & benign; T2/T3 unaffected \\
+(iii) Physical & camera image-signal processor (ISP) low-pass filter attenuates broadband residue & open; digital only \\
+(iv) Non-vision & 1D sanity check: AUROC 0.96 (3 seeds) & \textbf{resolved} (App.~\ref{app:nonvision}) \\
+(v) Adaptive & 20-arch sweep; A3 costs 8\% success & \textbf{resolved} (Fig.~\ref{fig:adaptive_ladder}) \\
+(vi) On-silicon & H200 measured + roofline; no Jetson/Pi board & \textbf{measured} (Fig.~\ref{fig:onsilicon}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We proposed Viyog, a lightweight gradient-free method for separating OOD from ADV inputs via first-layer dormant-band roughness statistics. The deployed detector is the dormant-band roughness statistic $V(x)$, grounded
+in Proposition~\ref{prop:shape}: it inflates under the exact broadband
+residue any gradient attack injects while remaining invariant to activation magnitude,
+separating ADV from ID/OOD at AUROC $\mathbf{0.966}$ (T2), confirmed stable across
+20 architectures and 3 training seeds (Table~\ref{tab:main_results}, Fig.~\ref{fig:seed_forest}). The phenomenon persists in ConvNeXtV2,
+ViT-B/16, and Swin-T at $224\times224$; a principled adaptive analysis shows
+defeating it requires an explicit norm-preservation loss absent from standard
+attacks, and even then only the global $L_\infty$ score is evaded---the
+complementary dormant-band shape statistic still flags the attack ($0\%$
+evasion)---while $L_\infty$ evasion itself yields the safer outcome of abstention.
+
+\rev{Complementary to logit scores (which are blind to adversarials), Viyog in a lightweight supervised head gives the first deployable three-way ID/OOD/ADV separation---full-panel balanced accuracy \textbf{0.798}--\textbf{0.863} across 20 architectures
+and two datasets, the logit$+$Viyog pair alone \textbf{0.757}/\textbf{0.768} (CIFAR-100/GTSRB), at
+$\approx0.3$\,KB of added state. Viyog adds no parameters, requires no
+retraining, and runs in a single forward pass, making it immediately deployable
+as a plug-in second stage for safety-critical embedded AI.}
+
+\FloatBarrier
+\appendices
+\section{General-Affine Suppression Bound, GELU Error, and Proof of Proposition~1}
+\label{app:affine}
+\linelabel{LL:appA}The first-layer perturbation bound (Eq.~\eqref{eq:affinebound}) uses only that the first layer is
+\emph{affine}. For any first-layer Jacobian $W$ (dense layer, strided
+convolution, or ViT/Swin patch embedding) and perturbation $\|\delta\|_\infty
+\le\varepsilon$,
+\begin{equation}
+  \|W\delta\|_\infty \le \|W\|_\infty\,\varepsilon,\qquad
+  \|W\|_\infty=\max_i\textstyle\sum_j|W_{ij}|,
+  \label{eq:affinebound}
+\end{equation}
+the induced $\infty$-operator norm (maximum absolute row sum). Convolution is
+the special case in which $W=M_m$ is Toeplitz and the maximum row sum equals
+$\|W_m\|_1$, recovering Eq.~\eqref{eq:affinebound}; the Toeplitz structure is thus
+\emph{sufficient but not necessary}, so the mechanism extends to patch-embedding
+first layers that have no shift-invariance.
+
+If the first activation is a smooth $g$ (e.g.\ GELU), the linearisation error
+in each pre-activation coordinate is bounded by the Taylor remainder
+$\tfrac12\sup_z|g''(z)|\,(\|W\|_\infty\varepsilon)^2$. For
+$\mathrm{GELU}(z)=z\,\Phi(z)$, $g''(z)=\varphi(z)\,(2-z^2)$ has interior extrema
+at $z=0$ (value $2\varphi(0)$) and $z=\pm2$ (value $-2\varphi(2)\approx-0.108$);
+since $0.798>0.108$ the supremum is at $z=0$,
+\begin{equation}
+  \sup_z|\mathrm{GELU}''(z)| = 2\varphi(0) = \sqrt{2/\pi} \approx 0.798,
+\end{equation}
+so the per-coordinate error is at most $0.399\,(\|W\|_\infty\varepsilon)^2$.
+This is a \emph{worst-case} bound: the remainder-to-linear ratio is
+$0.399\,\|W\|_\infty\varepsilon$, which for the measured first-layer weights is
+$O(1)$--$O(10)$ (e.g.\ ${\approx}6.8$ for ResNet-50 at $\varepsilon{=}8/255$). The
+bound therefore certifies the affine model only to leading order rather than as an
+exact identity; the realised perturbation reaches only a fraction of this
+operator-norm bound (Sec.~\ref{sec:theory}), but we do not claim the
+post-activation linearisation is exact.
+
+\subsubsection*{Full Proof of Proposition~\ref{prop:shape}}
+The affine residue $e_c=w_c\!\ast\delta$ established above is the object on which
+the roughness statistic acts; we now prove its three properties (P1--P3) in turn.
+
+\noindent\textbf{(P1) Scale-invariance.} $\mathrm{TV}$ and $\overline{|\cdot|}$ are absolutely $1$-homogeneous, so $\widetilde{\mathrm{TV}}(\lambda_c a_c)=\tfrac{\lambda_c\mathrm{TV}(a_c)}{\lambda_c\nu_c+\epsilon}$, equal to $\widetilde{\mathrm{TV}}(a_c)$ at $\epsilon=0$; first-order expansion in $\epsilon/(\lambda_c\nu_c)$ gives the stated $O(\epsilon/\nu_c)$ residual. $V$ averages such terms, inheriting the invariance. An attacker holding any magnitude norm fixed therefore cannot move $V$; to lower $V$ it must smooth the injected residue $e_c$, which (A2) conflicts with flipping the label.
+
+\textbf{(P2) Two-sided bound.} Affineness gives $e_c=w_c\!\ast\delta$ exactly. \emph{Upper bound}: TV subadditivity $\mathrm{TV}(a_c')\le\mathrm{TV}(a_c)+\mathrm{TV}(e_c)$; divide by $\nu_c+\epsilon$, use $\mathrm{TV}(e_c)=\rho_c r_c\nu_c$ (A2,A3) and $\mathrm{TV}(a_c)\le\beta_c\nu_c$ (A1). \emph{Lower bound}: reverse triangle $\mathrm{TV}(a_c')\ge\mathrm{TV}(e_c)-\mathrm{TV}(a_c)$; the denominator satisfies $\overline{|a_c'|}\le\nu_c(1+r_c)$; substitute A1--A3 and cancel $\nu_c$. The Young's convolution envelope $\mathrm{TV}(e_c)\le\|w_c\|_1\overline{\|\nabla\delta\|_1}$ is $\sim2\times$ loose empirically, so the norm bound is not tight---the separation comes from the spectral-shape contrast $\rho_c-\beta_c$. For post-ReLU/GELU layers ($1$-Lipschitz, monotone), $|\Delta\phi|\le|\Delta u|$ pointwise, so the TV inequalities carry through unchanged.
+
+\textbf{(P3) Conditional separation.} The per-channel margin is $\tfrac{\rho_{\min}r_{\min}}{1+r_c}-2\beta_c$, positive under the stated condition; averaging over $\mathcal{B}$ yields $V(x')>V(x)$. The margin grows with $r_c$ (the quietness ratio), formalising why dormant channels maximise separation and why dead-channel exclusion ($\kappa$) is necessary. \emph{Why OOD stays low}: OOD images are natural (A1 applies) and P1 ensures magnitude changes cannot raise $V$---exactly the failure mode of the raw-$\|a\|_\infty$ statistic that the shape ratio avoids.
+
+
+
+
+
+\section{Non-Vision Sanity Check (1D Signals)}
+\label{app:nonvision}
+Because the suppression bound of Appendix~\ref{app:affine} assumes only an
+\emph{affine} first layer, the mechanism should transfer to any modality with one;
+we verify this on 1D signals. A 1D-CNN trained on
+band-limited multi-sinusoid signals detects adversarials at mean T2
+AUROC~$\mathbf{0.96}$ (vs.\ $0.71$ for the raw norm, 3 seeds;
+Fig.~\ref{fig:nonvision}), confirming the broadband-roughness mechanism is
+modality-agnostic.
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

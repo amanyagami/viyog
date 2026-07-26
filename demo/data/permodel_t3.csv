@@ -1,0 +1,271 @@
+dataset,model,method,detector,is_viyog,T3
+CIFAR-100,convnextv2_base,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5384
+CIFAR-100,convnextv2_base,ViyogD_tv_dorm,Viyog-D (TV),True,0.9409
+CIFAR-100,convnextv2_base,ViyogD_hf_dorm,Viyog-HF,True,0.9081
+CIFAR-100,convnextv2_base,MSP,MSP,False,0.8163
+CIFAR-100,convnextv2_base,MaxLogit,MaxLogit,False,0.8184
+CIFAR-100,convnextv2_base,Energy,Energy,False,0.8111
+CIFAR-100,convnextv2_base,Entropy,Entropy,False,0.8205
+CIFAR-100,convnextv2_base,GEN,GEN,False,0.8236
+CIFAR-100,convnextv2_base,KLMatching,KL-Matching,False,0.8193
+CIFAR-100,densenet121,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6672
+CIFAR-100,densenet121,ViyogD_tv_dorm,Viyog-D (TV),True,0.8038
+CIFAR-100,densenet121,ViyogD_hf_dorm,Viyog-HF,True,0.6916
+CIFAR-100,densenet121,MSP,MSP,False,0.8436
+CIFAR-100,densenet121,MaxLogit,MaxLogit,False,0.8379
+CIFAR-100,densenet121,Energy,Energy,False,0.8355
+CIFAR-100,densenet121,Entropy,Entropy,False,0.8446
+CIFAR-100,densenet121,GEN,GEN,False,0.8407
+CIFAR-100,densenet121,KLMatching,KL-Matching,False,0.8443
+CIFAR-100,densenet161,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.674
+CIFAR-100,densenet161,ViyogD_tv_dorm,Viyog-D (TV),True,0.7714
+CIFAR-100,densenet161,ViyogD_hf_dorm,Viyog-HF,True,0.5457
+CIFAR-100,densenet161,MSP,MSP,False,0.8235
+CIFAR-100,densenet161,MaxLogit,MaxLogit,False,0.8061
+CIFAR-100,densenet161,Energy,Energy,False,0.7951
+CIFAR-100,densenet161,Entropy,Entropy,False,0.8327
+CIFAR-100,densenet161,GEN,GEN,False,0.8408
+CIFAR-100,densenet161,KLMatching,KL-Matching,False,0.8319
+CIFAR-100,densenet169,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6821
+CIFAR-100,densenet169,ViyogD_tv_dorm,Viyog-D (TV),True,0.8368
+CIFAR-100,densenet169,ViyogD_hf_dorm,Viyog-HF,True,0.8076
+CIFAR-100,densenet169,MSP,MSP,False,0.8044
+CIFAR-100,densenet169,MaxLogit,MaxLogit,False,0.7864
+CIFAR-100,densenet169,Energy,Energy,False,0.7776
+CIFAR-100,densenet169,Entropy,Entropy,False,0.8142
+CIFAR-100,densenet169,GEN,GEN,False,0.8265
+CIFAR-100,densenet169,KLMatching,KL-Matching,False,0.8143
+CIFAR-100,densenet201,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6813
+CIFAR-100,densenet201,ViyogD_tv_dorm,Viyog-D (TV),True,0.8702
+CIFAR-100,densenet201,ViyogD_hf_dorm,Viyog-HF,True,0.7595
+CIFAR-100,densenet201,MSP,MSP,False,0.7806
+CIFAR-100,densenet201,MaxLogit,MaxLogit,False,0.7446
+CIFAR-100,densenet201,Energy,Energy,False,0.7355
+CIFAR-100,densenet201,Entropy,Entropy,False,0.7901
+CIFAR-100,densenet201,GEN,GEN,False,0.8032
+CIFAR-100,densenet201,KLMatching,KL-Matching,False,0.7907
+CIFAR-100,edgenext_small,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5246
+CIFAR-100,edgenext_small,ViyogD_tv_dorm,Viyog-D (TV),True,0.803
+CIFAR-100,edgenext_small,ViyogD_hf_dorm,Viyog-HF,True,0.7231
+CIFAR-100,edgenext_small,MSP,MSP,False,0.8201
+CIFAR-100,edgenext_small,MaxLogit,MaxLogit,False,0.8303
+CIFAR-100,edgenext_small,Energy,Energy,False,0.839
+CIFAR-100,edgenext_small,Entropy,Entropy,False,0.8286
+CIFAR-100,edgenext_small,GEN,GEN,False,0.8375
+CIFAR-100,edgenext_small,KLMatching,KL-Matching,False,0.8263
+CIFAR-100,efficientnetv2_l,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5687
+CIFAR-100,efficientnetv2_l,ViyogD_tv_dorm,Viyog-D (TV),True,0.8717
+CIFAR-100,efficientnetv2_l,ViyogD_hf_dorm,Viyog-HF,True,0.8445
+CIFAR-100,efficientnetv2_l,MSP,MSP,False,0.737
+CIFAR-100,efficientnetv2_l,MaxLogit,MaxLogit,False,0.7533
+CIFAR-100,efficientnetv2_l,Energy,Energy,False,0.756
+CIFAR-100,efficientnetv2_l,Entropy,Entropy,False,0.742
+CIFAR-100,efficientnetv2_l,GEN,GEN,False,0.746
+CIFAR-100,efficientnetv2_l,KLMatching,KL-Matching,False,0.7403
+CIFAR-100,efficientvit_b1,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5642
+CIFAR-100,efficientvit_b1,ViyogD_tv_dorm,Viyog-D (TV),True,0.8554
+CIFAR-100,efficientvit_b1,ViyogD_hf_dorm,Viyog-HF,True,0.8112
+CIFAR-100,efficientvit_b1,MSP,MSP,False,0.639
+CIFAR-100,efficientvit_b1,MaxLogit,MaxLogit,False,0.6475
+CIFAR-100,efficientvit_b1,Energy,Energy,False,0.6795
+CIFAR-100,efficientvit_b1,Entropy,Entropy,False,0.64
+CIFAR-100,efficientvit_b1,GEN,GEN,False,0.6477
+CIFAR-100,efficientvit_b1,KLMatching,KL-Matching,False,0.6412
+CIFAR-100,effnet_lite0,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5323
+CIFAR-100,effnet_lite0,ViyogD_tv_dorm,Viyog-D (TV),True,0.8268
+CIFAR-100,effnet_lite0,ViyogD_hf_dorm,Viyog-HF,True,0.748
+CIFAR-100,effnet_lite0,MSP,MSP,False,0.8208
+CIFAR-100,effnet_lite0,MaxLogit,MaxLogit,False,0.8367
+CIFAR-100,effnet_lite0,Energy,Energy,False,0.8465
+CIFAR-100,effnet_lite0,Entropy,Entropy,False,0.8532
+CIFAR-100,effnet_lite0,GEN,GEN,False,0.8893
+CIFAR-100,effnet_lite0,KLMatching,KL-Matching,False,0.8605
+CIFAR-100,fastvit_sa12,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5759
+CIFAR-100,fastvit_sa12,ViyogD_tv_dorm,Viyog-D (TV),True,0.6524
+CIFAR-100,fastvit_sa12,ViyogD_hf_dorm,Viyog-HF,True,0.6461
+CIFAR-100,fastvit_sa12,MSP,MSP,False,0.542
+CIFAR-100,fastvit_sa12,MaxLogit,MaxLogit,False,0.5094
+CIFAR-100,fastvit_sa12,Energy,Energy,False,0.5149
+CIFAR-100,fastvit_sa12,Entropy,Entropy,False,0.5841
+CIFAR-100,fastvit_sa12,GEN,GEN,False,0.6376
+CIFAR-100,fastvit_sa12,KLMatching,KL-Matching,False,0.5844
+CIFAR-100,mobilenetv3_l,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5263
+CIFAR-100,mobilenetv3_l,ViyogD_tv_dorm,Viyog-D (TV),True,0.8633
+CIFAR-100,mobilenetv3_l,ViyogD_hf_dorm,Viyog-HF,True,0.7471
+CIFAR-100,mobilenetv3_l,MSP,MSP,False,0.7349
+CIFAR-100,mobilenetv3_l,MaxLogit,MaxLogit,False,0.7383
+CIFAR-100,mobilenetv3_l,Energy,Energy,False,0.7382
+CIFAR-100,mobilenetv3_l,Entropy,Entropy,False,0.7356
+CIFAR-100,mobilenetv3_l,GEN,GEN,False,0.7489
+CIFAR-100,mobilenetv3_l,KLMatching,KL-Matching,False,0.7378
+CIFAR-100,mobilenetv4_m,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5544
+CIFAR-100,mobilenetv4_m,ViyogD_tv_dorm,Viyog-D (TV),True,0.9523
+CIFAR-100,mobilenetv4_m,ViyogD_hf_dorm,Viyog-HF,True,0.9189
+CIFAR-100,mobilenetv4_m,MSP,MSP,False,0.7452
+CIFAR-100,mobilenetv4_m,MaxLogit,MaxLogit,False,0.7281
+CIFAR-100,mobilenetv4_m,Energy,Energy,False,0.6831
+CIFAR-100,mobilenetv4_m,Entropy,Entropy,False,0.7134
+CIFAR-100,mobilenetv4_m,GEN,GEN,False,0.6849
+CIFAR-100,mobilenetv4_m,KLMatching,KL-Matching,False,0.7112
+CIFAR-100,mobileone_s1,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.8551
+CIFAR-100,mobileone_s1,ViyogD_tv_dorm,Viyog-D (TV),True,0.8436
+CIFAR-100,mobileone_s1,ViyogD_hf_dorm,Viyog-HF,True,0.8414
+CIFAR-100,mobileone_s1,MSP,MSP,False,0.8696
+CIFAR-100,mobileone_s1,MaxLogit,MaxLogit,False,0.8677
+CIFAR-100,mobileone_s1,Energy,Energy,False,0.8243
+CIFAR-100,mobileone_s1,Entropy,Entropy,False,0.8697
+CIFAR-100,mobileone_s1,GEN,GEN,False,0.8697
+CIFAR-100,mobileone_s1,KLMatching,KL-Matching,False,0.8697
+CIFAR-100,resnet101,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5402
+CIFAR-100,resnet101,ViyogD_tv_dorm,Viyog-D (TV),True,0.8395
+CIFAR-100,resnet101,ViyogD_hf_dorm,Viyog-HF,True,0.7168
+CIFAR-100,resnet101,MSP,MSP,False,0.8087
+CIFAR-100,resnet101,MaxLogit,MaxLogit,False,0.8226
+CIFAR-100,resnet101,Energy,Energy,False,0.8225
+CIFAR-100,resnet101,Entropy,Entropy,False,0.8117
+CIFAR-100,resnet101,GEN,GEN,False,0.8108
+CIFAR-100,resnet101,KLMatching,KL-Matching,False,0.8073
+CIFAR-100,resnet152,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5205
+CIFAR-100,resnet152,ViyogD_tv_dorm,Viyog-D (TV),True,0.8294
+CIFAR-100,resnet152,ViyogD_hf_dorm,Viyog-HF,True,0.7151
+CIFAR-100,resnet152,MSP,MSP,False,0.7819
+CIFAR-100,resnet152,MaxLogit,MaxLogit,False,0.7784
+CIFAR-100,resnet152,Energy,Energy,False,0.776
+CIFAR-100,resnet152,Entropy,Entropy,False,0.783
+CIFAR-100,resnet152,GEN,GEN,False,0.7797
+CIFAR-100,resnet152,KLMatching,KL-Matching,False,0.7802
+CIFAR-100,resnet18,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5648
+CIFAR-100,resnet18,ViyogD_tv_dorm,Viyog-D (TV),True,0.71
+CIFAR-100,resnet18,ViyogD_hf_dorm,Viyog-HF,True,0.6959
+CIFAR-100,resnet18,MSP,MSP,False,0.855
+CIFAR-100,resnet18,MaxLogit,MaxLogit,False,0.8642
+CIFAR-100,resnet18,Energy,Energy,False,0.8703
+CIFAR-100,resnet18,Entropy,Entropy,False,0.8529
+CIFAR-100,resnet18,GEN,GEN,False,0.8485
+CIFAR-100,resnet18,KLMatching,KL-Matching,False,0.8529
+CIFAR-100,resnet34,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5315
+CIFAR-100,resnet34,ViyogD_tv_dorm,Viyog-D (TV),True,0.759
+CIFAR-100,resnet34,ViyogD_hf_dorm,Viyog-HF,True,0.6441
+CIFAR-100,resnet34,MSP,MSP,False,0.8464
+CIFAR-100,resnet34,MaxLogit,MaxLogit,False,0.8286
+CIFAR-100,resnet34,Energy,Energy,False,0.8194
+CIFAR-100,resnet34,Entropy,Entropy,False,0.8521
+CIFAR-100,resnet34,GEN,GEN,False,0.8573
+CIFAR-100,resnet34,KLMatching,KL-Matching,False,0.8521
+CIFAR-100,resnet50,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5425
+CIFAR-100,resnet50,ViyogD_tv_dorm,Viyog-D (TV),True,0.883
+CIFAR-100,resnet50,ViyogD_hf_dorm,Viyog-HF,True,0.7968
+CIFAR-100,resnet50,MSP,MSP,False,0.8548
+CIFAR-100,resnet50,MaxLogit,MaxLogit,False,0.8388
+CIFAR-100,resnet50,Energy,Energy,False,0.8275
+CIFAR-100,resnet50,Entropy,Entropy,False,0.8604
+CIFAR-100,resnet50,GEN,GEN,False,0.8639
+CIFAR-100,resnet50,KLMatching,KL-Matching,False,0.8601
+CIFAR-100,swin_tiny,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5108
+CIFAR-100,swin_tiny,ViyogD_tv_dorm,Viyog-D (TV),True,0.8928
+CIFAR-100,swin_tiny,ViyogD_hf_dorm,Viyog-HF,True,0.8142
+CIFAR-100,swin_tiny,MSP,MSP,False,0.8696
+CIFAR-100,swin_tiny,MaxLogit,MaxLogit,False,0.9025
+CIFAR-100,swin_tiny,Energy,Energy,False,0.905
+CIFAR-100,swin_tiny,Entropy,Entropy,False,0.8823
+CIFAR-100,swin_tiny,GEN,GEN,False,0.903
+CIFAR-100,swin_tiny,KLMatching,KL-Matching,False,0.8468
+CIFAR-100,vit_base,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5925
+CIFAR-100,vit_base,ViyogD_tv_dorm,Viyog-D (TV),True,0.6812
+CIFAR-100,vit_base,ViyogD_hf_dorm,Viyog-HF,True,0.6965
+CIFAR-100,vit_base,MSP,MSP,False,0.9038
+CIFAR-100,vit_base,MaxLogit,MaxLogit,False,0.9202
+CIFAR-100,vit_base,Energy,Energy,False,0.9205
+CIFAR-100,vit_base,Entropy,Entropy,False,0.9107
+CIFAR-100,vit_base,GEN,GEN,False,0.9195
+CIFAR-100,vit_base,KLMatching,KL-Matching,False,0.8941
+CIFAR-10,resnet50,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.546
+CIFAR-10,resnet50,ViyogD_tv_dorm,Viyog-D (TV),True,0.8784
+CIFAR-10,resnet50,ViyogD_hf_dorm,Viyog-HF,True,0.7897
+CIFAR-10,resnet50,MSP,MSP,False,0.8779
+CIFAR-10,resnet50,MaxLogit,MaxLogit,False,0.8787
+CIFAR-10,resnet50,Energy,Energy,False,0.877
+CIFAR-10,resnet50,Entropy,Entropy,False,0.8829
+CIFAR-10,resnet50,GEN,GEN,False,0.886
+CIFAR-10,resnet50,KLMatching,KL-Matching,False,0.8841
+CIFAR-10,densenet121,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.716
+CIFAR-10,densenet121,ViyogD_tv_dorm,Viyog-D (TV),True,0.7889
+CIFAR-10,densenet121,ViyogD_hf_dorm,Viyog-HF,True,0.6718
+CIFAR-10,densenet121,MSP,MSP,False,0.8533
+CIFAR-10,densenet121,MaxLogit,MaxLogit,False,0.8675
+CIFAR-10,densenet121,Energy,Energy,False,0.8711
+CIFAR-10,densenet121,Entropy,Entropy,False,0.8572
+CIFAR-10,densenet121,GEN,GEN,False,0.8609
+CIFAR-10,densenet121,KLMatching,KL-Matching,False,0.8564
+CIFAR-10,convnextv2_base,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6476
+CIFAR-10,convnextv2_base,ViyogD_tv_dorm,Viyog-D (TV),True,0.725
+CIFAR-10,convnextv2_base,ViyogD_hf_dorm,Viyog-HF,True,0.6067
+CIFAR-10,convnextv2_base,MSP,MSP,False,0.7145
+CIFAR-10,convnextv2_base,MaxLogit,MaxLogit,False,0.7472
+CIFAR-10,convnextv2_base,Energy,Energy,False,0.7505
+CIFAR-10,convnextv2_base,Entropy,Entropy,False,0.7155
+CIFAR-10,convnextv2_base,GEN,GEN,False,0.7171
+CIFAR-10,convnextv2_base,KLMatching,KL-Matching,False,0.7133
+CIFAR-10,swin_tiny,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5892
+CIFAR-10,swin_tiny,ViyogD_tv_dorm,Viyog-D (TV),True,0.814
+CIFAR-10,swin_tiny,ViyogD_hf_dorm,Viyog-HF,True,0.6695
+CIFAR-10,swin_tiny,MSP,MSP,False,0.757
+CIFAR-10,swin_tiny,MaxLogit,MaxLogit,False,0.7451
+CIFAR-10,swin_tiny,Energy,Energy,False,0.7425
+CIFAR-10,swin_tiny,Entropy,Entropy,False,0.7587
+CIFAR-10,swin_tiny,GEN,GEN,False,0.7584
+CIFAR-10,swin_tiny,KLMatching,KL-Matching,False,0.758
+GTSRB,resnet50,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.5842
+GTSRB,resnet50,ViyogD_tv_dorm,Viyog-D (TV),True,0.9502
+GTSRB,resnet50,ViyogD_hf_dorm,Viyog-HF,True,0.8561
+GTSRB,resnet50,MSP,MSP,False,0.958
+GTSRB,resnet50,MaxLogit,MaxLogit,False,0.9606
+GTSRB,resnet50,Energy,Energy,False,0.9483
+GTSRB,resnet50,Entropy,Entropy,False,0.959
+GTSRB,resnet50,GEN,GEN,False,0.9574
+GTSRB,resnet50,KLMatching,KL-Matching,False,0.9478
+GTSRB,densenet121,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6316
+GTSRB,densenet121,ViyogD_tv_dorm,Viyog-D (TV),True,0.8561
+GTSRB,densenet121,ViyogD_hf_dorm,Viyog-HF,True,0.7748
+GTSRB,densenet121,MSP,MSP,False,0.9565
+GTSRB,densenet121,MaxLogit,MaxLogit,False,0.965
+GTSRB,densenet121,Energy,Energy,False,0.9663
+GTSRB,densenet121,Entropy,Entropy,False,0.9605
+GTSRB,densenet121,GEN,GEN,False,0.9598
+GTSRB,densenet121,KLMatching,KL-Matching,False,0.9532
+GTSRB,convnextv2_base,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6727
+GTSRB,convnextv2_base,ViyogD_tv_dorm,Viyog-D (TV),True,0.7219
+GTSRB,convnextv2_base,ViyogD_hf_dorm,Viyog-HF,True,0.6179
+GTSRB,convnextv2_base,MSP,MSP,False,0.8568
+GTSRB,convnextv2_base,MaxLogit,MaxLogit,False,0.8434
+GTSRB,convnextv2_base,Energy,Energy,False,0.8415
+GTSRB,convnextv2_base,Entropy,Entropy,False,0.8608
+GTSRB,convnextv2_base,GEN,GEN,False,0.8599
+GTSRB,convnextv2_base,KLMatching,KL-Matching,False,0.8105
+GTSRB,vit_base,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6163
+GTSRB,vit_base,ViyogD_tv_dorm,Viyog-D (TV),True,0.5898
+GTSRB,vit_base,ViyogD_hf_dorm,Viyog-HF,True,0.5367
+GTSRB,vit_base,MSP,MSP,False,0.7621
+GTSRB,vit_base,MaxLogit,MaxLogit,False,0.7544
+GTSRB,vit_base,Energy,Energy,False,0.7485
+GTSRB,vit_base,Entropy,Entropy,False,0.7657
+GTSRB,vit_base,GEN,GEN,False,0.7539
+GTSRB,vit_base,KLMatching,KL-Matching,False,0.7083
+GTSRB,swin_tiny,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.6627
+GTSRB,swin_tiny,ViyogD_tv_dorm,Viyog-D (TV),True,0.896
+GTSRB,swin_tiny,ViyogD_hf_dorm,Viyog-HF,True,0.8187
+GTSRB,swin_tiny,MSP,MSP,False,0.7716
+GTSRB,swin_tiny,MaxLogit,MaxLogit,False,0.7771
+GTSRB,swin_tiny,Energy,Energy,False,0.7782
+GTSRB,swin_tiny,Entropy,Entropy,False,0.7835
+GTSRB,swin_tiny,GEN,GEN,False,0.7857
+GTSRB,swin_tiny,KLMatching,KL-Matching,False,0.7081
+GTSRB,mobilenetv3_l,Viyog_Linf,Viyog-L∞ (norm baseline),True,0.54
+GTSRB,mobilenetv3_l,ViyogD_tv_dorm,Viyog-D (TV),True,0.7798
+GTSRB,mobilenetv3_l,ViyogD_hf_dorm,Viyog-HF,True,0.7008
+GTSRB,mobilenetv3_l,MSP,MSP,False,0.6988
+GTSRB,mobilenetv3_l,MaxLogit,MaxLogit,False,0.6935
+GTSRB,mobilenetv3_l,Energy,Energy,False,0.6583
+GTSRB,mobilenetv3_l,Entropy,Entropy,False,0.6457
+GTSRB,mobilenetv3_l,GEN,GEN,False,0.6237
+GTSRB,mobilenetv3_l,KLMatching,KL-Matching,False,0.7464

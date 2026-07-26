@@ -1,0 +1,486 @@
+% ============================================================
+%  Viyog #215 — Response to Reviewers
+%  IEEE TCAD double-column; 4 pages.
+%  All manuscript changes referenced here are highlighted in BLUE in the
+%  revised PDF (all blue text added/changed for this revision round).
+% ============================================================
+\documentclass[10pt,letterpaper,journal]{IEEEtran}
+\usepackage{lineno}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{balance}
+\usepackage{hyperref}
+
+% ---- Macros -----------------------------------------------------------------
+% Reviewer comment block: compact dark-grey italic (tight, no box chrome)
+\newcommand{\rc}[1]{\smallskip\noindent\textit{\textcolor{black!75}{#1}}\par\smallskip}
+
+\newcommand{\rr}{\noindent\textbf{Response.}~}
+\newcommand{\chg}[1]{\textcolor{blue}{\textbf{[Changed:} #1\textbf{]}}}
+\newcommand{\Linf}{$L_\infty$}
+\newcommand{\xmark}{\textcolor{red}{\ensuremath{\times}}}
+\newcommand{\done}[1]{\textcolor{teal}{\textbf{[Done: #1]}}}
+
+\title{Response to Reviewers --- Paper \#215\\
+``Viyog: Separating Adversarial and Out-of-Distribution Inputs\\
+via First-Layer Dormant-Band Statistics''}
+\author{Anonymous Author(s)}
+
+\begin{document}
+\maketitle
+
+\noindent We thank the four reviewers for their thorough, constructive reviews.
+We have substantially revised the paper to address every concern; full details
+follow per-reviewer below.
+\textbf{All revisions are highlighted in blue in the revised PDF.}
+Each \textcolor{teal}{\textbf{[Done:]}} tag names the section, figure, or table
+where the change appears; PDF page numbers are given in parentheses after each tag.
+
+% ── Quick-reference: what changed ─────────────────────────────────────────────
+\section*{Summary of Changes in the Revised Manuscript}
+
+\noindent\textbf{New / updated sections:}
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=2pt]
+  \item \textbf{Abstract \& Sec.~I (Introduction):} deployment framing front-loaded; $L_\infty$-form $\to$ TV statistic (Viyog) naming clarified; structured TV-mitigation explanation added.
+  \item \textbf{Sec.~III (Theory):} Toeplitz necessity removed; affine-general propositions P1--P3; GELU error term explicitly bounded; plain-language attack / mitigation / TV paragraph added.
+  \item \textbf{Sec.~IV (Method):} graded readout is now the continuous $V(x)$; squash retained only as a monotone routing transform.
+  \item \textbf{Sec.~VI-A--C (Results):} 20-arch training-seed CIs; near / texture-OOD split; depth sweep; measured H200 cost + edge roofline.
+  \item \textbf{Sec.~VII (Adaptive attacks):} full A0--A3 ladder + EOT (20 archs + GTSRB).
+  \item \textbf{Sec.~IX-A (End-to-end cascade):} two-stage pipeline evaluated (17 archs $\times$ 10 seeds).
+  \item \textbf{Sec.~IX-B (Limitations):} physical-attack scope; DenseNet dead-channel fix; 1D non-vision probe.
+\end{itemize}
+
+\smallskip
+\noindent\textbf{New / updated tables:}
+Tab.~I (related work), Tab.~II (coverage), Tab.~III (main results, directionless 20-arch),
+Tab.~IV (detector cost), Tab.~V (end-to-end cascade), Tab.~VI (limitations).
+
+\smallskip
+\noindent\textbf{New / updated figures:}
+Figs.~1--3, 5, 7--15 (main paper); App.~Figs.~16--18.
+
+\smallskip
+\noindent\textit{All new and changed text is highlighted in \textcolor{blue}{blue} in the revised PDF.}
+
+% ── Main results summary table ────────────────────────────────────────────────
+\begin{table}[t]\centering\footnotesize\setlength{\tabcolsep}{1.5pt}
+\caption{Directionless AUROC / FPR@95\% on 20 CIFAR-100 architectures ($\times$ =
+direction-inconsistent, not deployable). Viyog is the only method with
+deployable T2 and T3, at $0.3$\,KB state.}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Method & T1 ID/OOD & T2 ID/ADV & T3 OOD/ADV & State \\\midrule
+Energy / MaxLogit / GEN & \textbf{0.85--0.85} & 0.36--0.41\,\xmark & 0.79--0.81 & 4\,B \\
+Mahalanobis / KNN & 0.88--0.90 & 0.84--0.88 & 0.69--0.71 & 4.5--40\,MB \\
+\rowcolor{teal!12}\textbf{Viyog} (dorm.\ TV) & 0.69 & \textbf{0.966} & \textbf{0.824} & \textbf{0.3\,KB} \\
+FirstConv-\Linf\ (old $L_\infty$-form) & 0.60\,\xmark & 0.56\,\xmark & 0.45\,\xmark & 8\,B \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section*{Reviewer A}
+\noindent\textit{We address all 7 detailed comments
+(DC~1--7) below. Weaknesses W1--W5 map to DC~1--5 respectively.}
+
+% ------ DC 1 ------------------------------------------------------------------
+\rc{DC~1. ``The paper repeatedly emphasizes the fact that Viyog is a second stage
+detector that operates on the inputs flagged as non-ID by some first-stage
+detectors. However, has an end-to-end evaluation of the system that combines both a
+first stage detector and Viyog been done? If so, which first-stage detector has been
+used and specify the same for the results provided in Table~1.''}
+
+\rr Yes --- we now provide a complete end-to-end two-stage cascade (Energy gate
+$\to$ Viyog) evaluated over 17 architectures $\times$ 10 seeds at a matched
+5\% ID-FPR. The first-stage detector is Energy (the strongest logit baseline), and
+its identity is now stated explicitly in Sec.~IX-A and Table~V.
+\done{Table~V \& Fig.~15 (p.~11); Sec.~IX-A (p.~10, l.~569)}
+
+% ------ DC 2 ------------------------------------------------------------------
+\rc{DC~2. ``If Viyog's ability to separate ADV from OOD has been evaluated given
+samples of both sets are already known to be non-ID, then this is not the same as
+end-to-end evaluation as the first-stage detector could also have its own false
+positives and false negatives. How does Viyog handle such situations?''}
+
+\rr \emph{False-positive propagation is now measured directly.} When stage-1
+wrongly flags an ID input, Viyog escalates it to the ADV class only
+\textbf{5.2\%} of the time (median 0; exactly 0 on 14/17 architectures) versus
+51--82\% for logit/\Linf{} baselines --- Viyog \emph{mitigates} rather than
+amplifies upstream errors. ADV recall: adding the first-conv dormant-band
+deviation to the gate lifts end-to-end ADV recall from \textbf{0.16 to 0.84}
+(16/17 architectures; ViT-B the lone outlier at 0.21).
+\done{Table~V \& Fig.~15 (p.~11); Sec.~IX-A (p.~10, l.~569)}
+
+% ------ DC 3 ------------------------------------------------------------------
+\rc{DC~3. ``Please check for the notations to be specified at the necessary places
+e.g.: line 90, 139, and parts of the formal proposition. And please check for any
+typos e.g.: Fig.~5 caption.''}
+
+\rr We performed a global notation pass: every symbol ($\mathcal{B}$, $\nu_c$,
+$\rho_c$, $r_c$, $\widetilde{\mathrm{TV}}$, T1/T2/T3) is now defined at first
+use; figure captions are self-contained; the Fig.~5 caption typo is corrected.
+\done{Sec.~III-A (p.~3, l.~207); symbols defined at first use; self-contained captions}
+
+% ------ DC 4 ------------------------------------------------------------------
+\rc{DC~4. ``Can the authors provide an ablation result with some intermediate layer
+neurons to experimentally back their theoretical claim?''}
+
+\rr Complete depth sweep across 6 architectures: the dormant-band \emph{shape}
+statistic is \textbf{strongest at depth~0} (mean T2~0.965) and decays
+monotonically, while the raw norm is \emph{weakest} there (0.52) and only peaks
+mid-depth at 0.80. The first-conv shape read exceeds a raw-norm layer oracle at
+every depth, so adaptive layer selection is unnecessary.
+\done{Fig.~10 (p.~8); Sec.~VI-B (p.~7, l.~427)}
+
+% ------ DC 5 ------------------------------------------------------------------
+\rc{DC~5. ``Though it is acknowledged that the authors want a bimodal distribution
+where `clearly anomalous inputs' get confident scores, this could lead to loss of
+degree of anomaly information. For example, for 2 inputs, one with a slight OOD and
+one with extreme OOD, with softer concentration towards the extremums, the detector
+could use the magnitude of the score to trigger a better response. But with
+double-exponential squashing, the system cannot distinguish mildly OOD and extremely
+OOD. What are the comments of the authors in this regard?''}
+
+\rr \emph{Addressed by redesign.} The graded anomaly readout is now the continuous
+magnitude-normalised TV ratio $V(x)$ itself; the double-exponential squash survives
+only as a monotone routing transform shaping the binary OOD-vs-ADV operating curve.
+A mildly OOD input produces a lower $V$ than an extremely OOD one, preserving the
+severity gradient the reviewer correctly identifies as necessary.
+\done{Sec.~IV-B (p.~4, l.~336); abstract (p.~1)}
+
+% ------ DC 6 ------------------------------------------------------------------
+\rc{DC~6. ``In Fig.~2, the separation between the mean of norms of OOD and ADV is
+clearly visible for the $L_\infty$ norm as stated by the authors. However, the
+separation between the mean of norm of ADV and ID samples seems to appear more
+pronounced in the graph of the $L_2$ norm. What do the authors comment on this?
+Also, providing a quantitative comparison for the same could be helpful.''}
+
+\rr \emph{Addressed.} We ran a 37-statistic battery at the first conv: every
+raw magnitude norm sits near chance ($L_\infty$ 0.50--0.53, $L_2$ 0.58, $L_1$
+similar), while the dormant-band \emph{shape} family tops $\approx$\textbf{0.98}
+(Fig.~4). No magnitude norm separates ADV reliably; the deployed Viyog reads channel
+\emph{shape}, not magnitude, making the $L_\infty$ vs.\ $L_2$ comparison moot ---
+both are near chance for the security task T2.
+\done{Fig.~4 (37-statistic battery, p.~5); Sec.~IV-B (p.~4, l.~336)}
+
+% ------ DC 7 ------------------------------------------------------------------
+\rc{DC~7. ``The paper shares repeated emphasis on the adaptability of Viyog to
+embedded hardware systems. Though the authors have shown comparative or better
+performance of Viyog in terms of detection latency and memory utilization, these are
+done on high-end desktop hardware. No profiling on actual embedded platforms (e.g.:
+Raspberry Pi, Jetson, FPGA) is provided. Can these results be extrapolated as such
+to embedded targets? It would be helpful for the embedded systems community if the
+authors could provide results on at least one embedded platform, even through
+simulation.''}
+
+\rr We deliver \emph{measured} costs on an H200 GPU with CUDA event timing:
+Viyog runs \textbf{0.05\,ms/img}, $6\times$ faster than logit detectors
+(MSP/Energy) and $347\times$ faster than MC-Dropout (30 passes); state is
+\textbf{0.23\,KB} vs.\ 9--28\,MB for distance baselines (Fig.~12). A
+compute-bound roofline projection for edge accelerators (Jetson Orin Nano,
+RPi5+Hailo-8L) places the first-conv energy at \textbf{19--37\,$\mu$J} vs.\
+0.6--1.2\,mJ for full inference (Fig.~13). On-board Jetson/Pi measurements require
+physical device access not currently available; we note this as an open item in
+Table~VI.
+\done{Figs.~12--13 (p.~10); Sec.~VI-C \& Table~IV (p.~8, l.~451)}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section*{Reviewer B}
+\noindent\textit{We address all 12 detailed
+comments (DC~1--12) below.}
+
+% ------ DC 1 ------------------------------------------------------------------
+\rc{DC~1. ``The paper leads with theoretical Toeplitz analysis while burying the
+systems contribution (memory efficiency, detection time, three-way routing) in late
+sections. For CODES+ISSS, the hardware/systems motivation should be front and center.
+The introduction should establish the embedded deployment context, memory
+constraints, and routing requirements before introducing the theoretical mechanism.''}
+
+\rr Abstract now opens with the deployment framing (0.3\,KB, no extra forward
+pass, three-way routing); Section~I foregrounds embedded-vision requirements and
+the two-stage pipeline; Table~IV provides the dedicated cost breakdown.
+\done{Abstract \& Sec.~I (p.~1, l.~27); Table~IV (p.~8)}
+
+% ------ DC 2 ------------------------------------------------------------------
+\rc{DC~2. ``The paper motivates Viyog with autonomous vehicle and medical imaging
+applications, yet acknowledges that physical adversarial attacks (adversarial stop
+signs, physical perturbations in scene space) are unaddressed. For safety-critical
+embedded deployment this is a significant limitation that should be more prominently
+discussed rather than deferred to future work.''}
+
+\rr A dedicated Limitations section (Table~VI) explicitly enumerates physical/ISP
+attenuation as a hard boundary condition. We note that the TV-shape mechanism
+\emph{requires} digital gradient structure; physical attacks that pass through a
+camera ISP low-pass filter are acknowledged as out of scope with clear reasoning.
+\done{Sec.~IX-B (p.~11, l.~586); Table~VI (p.~11)}
+
+% ------ DC 3 ------------------------------------------------------------------
+\rc{DC~3. ``Results are reported from single training runs. Confidence intervals
+across multiple seeds should be standard for a publication of this type. The Swin-T
+multi-seed study mentioned as a preliminary analysis in the limitations should be
+extended to all architectures.''}
+
+\rr \emph{Full 20-architecture training-seed CIs delivered.} Each of the 20
+CIFAR-100 backbones was re-finetuned with up to 3 independent seeds; T2
+per-architecture std $\le$\textbf{0.004} across all 20 (an order of magnitude
+below the cross-architecture spread); T3 std $\le$0.06. Separation is a property
+of the dormant-band statistic, not a lucky seed (Fig.~8).
+\done{Fig.~8 (p.~7); Sec.~VI-A (p.~6, l.~407)}
+
+% ------ DC 4 ------------------------------------------------------------------
+\rc{DC~4. ``Proposition~1 presents 2 results. (1)~The bound is an upper bound, not
+an equality; actual separation between adversarial and OOD activations depends on
+the tightness of this bound in practice, which is not functionally analyzed; the
+necessity for Toeplitz structure is not established. (2)~Derives an optimal
+activation suppression strategy using a linear Taylor expansion. This result is
+attack-specific, applying to gradient sign attacks. This does not generalize to the
+other attack vectors evaluated in this paper.''}
+
+\rr \emph{Addressed by reframing the theory.}
+\textit{(i)}~Toeplitz necessity removed: $V(x)$ is a per-channel shape ratio with
+no structural assumption; the bound in Appendix~A holds for any affine first layer.
+\textit{(ii)}~The Young envelope $\mathrm{TV}(e_c)\le\|w_c\|_1\overline{\|\nabla\delta\|_1}$
+is stated as a $\le$ (empirically $\approx2\times$ loose, measured) and is not the
+detection mechanism; a two-sided bound is now proven via TV subadditivity (P2).
+\textit{(iii)}~The per-channel residue $e_c=w_c\!\ast\delta$ is \emph{exact by
+affineness} (no Taylor, no $\mathrm{sign}\nabla\mathcal{L}$), so the
+attack-agnostic property of P2 holds for FGSM, PGD, CW, and DeepFool identically.
+\done{Proposition~1 (pp.~3--4); Appendix~A (p.~12, l.~623)}
+
+% ------ DC 5 ------------------------------------------------------------------
+\rc{DC~5. ``The extension to ViT architectures implicitly applies the Toeplitz norm
+equivalence to a non-Toeplitz matrix. A patch embedding projection is not a Toeplitz
+matrix --- provide a separate analysis for non-convolutional architectures or
+demonstrate that the bound holds for general affine maps. For post-activation
+regimes, the curvature-dependent error for GELU activations should be explicitly
+bounded rather than asserted to be negligible.''}
+
+\rr The theory now states the first layer as \emph{any} affine $f_0(x)=W\!\ast x+b$
+(strided conv or patch-embed projection); the exact residue $e_c=w_c\!\ast\delta$
+and TV-seminorm subadditivity hold identically for both without invoking Toeplitz
+structure. GELU: a monotone 1-Lipschitz readout preserves the P2 inequality with the
+same constant; curvature enters only the magnitude denominator, to which $V$ is
+insensitive by P1. The Taylor remainder is explicitly bounded in Appendix~A
+($\le0.399\,\|W\|_\infty^2\varepsilon^2$ per coordinate).
+\done{Proposition~1 (pp.~3--4); Appendix~A GELU error (p.~12, l.~623)}
+
+% ------ DC 6 ------------------------------------------------------------------
+\rc{DC~6. ``There seems to be a claim of universal convergence to an interval
+$(\pm 1)$ around the expected value of ID inputs in the introduction. It is walked
+back later in the paper. That seems spurious and unproven.''}
+
+\rr \emph{Addressed.} The $\pm1$ convergence claim was an assertion about the hard
+double-exponential squash on the raw \Linf{} statistic, which is no longer
+deployed. The graded readout is now $V(x)$ (continuous, non-saturating); no
+convergence claim appears in the revised paper.
+\done{Sec.~I \& abstract (p.~1, l.~27); squash demoted to routing only}
+
+% ------ DC 7 ------------------------------------------------------------------
+\rc{DC~7. ``Figure~2 presents mean norm values without distributional information;
+overlapping distributions would undermine practical utility of norm-based separation
+regardless of differences in their mean. The claim that `the attacker concentrates
+on the single dominant channel' does not hold for FGSM and PGD, which distribute
+perturbation by design.''}
+
+\rr The original Fig.~2 (mean norm bar chart) is \textbf{replaced by the new
+Fig.~3}, which shows full per-image $V(x)$ distributions (ID, OOD, ADV)
+alongside the per-channel dormant-band activation profile, so distributional
+overlap is directly visible rather than implied by means alone.
+The ``single-dominant channel'' wording is replaced by the broadband A2 premise:
+the residue $e_c=w_c\!\ast\delta$ spreads across \emph{all} channels by design,
+and it is this spread that $V$ exploits.
+\done{Fig.~3 (replaces orig.\ Fig.~2, p.~4); Proposition~1 premise A2 (pp.~3--4)}
+
+% ------ DC 8 ------------------------------------------------------------------
+\rc{DC~8. ``Figure~4 is spaghetti; authors claim most curves rise monotonically,
+but that is not the case. Several do, but their point is undermined by the ones
+that do not.''}
+
+\rr Fig.~4 (depth sweep, now Fig.~10) shows per-arch mean $\pm$ std bands rather
+than individual curves. The mean trend is clearly monotone; individual outliers that
+previously obscured the trend are now visible as std-band width.
+\done{Fig.~10; revised caption (p.~8)}
+
+% ------ DC 9 ------------------------------------------------------------------
+\rc{DC~9. ``Figure~5 is missing a reference to a section.''}
+
+\rr Fig.~5 caption now cites Section~IV-B explicitly.
+\done{Fig.~5 caption (p.~6)}
+
+% ------ DC 10 -----------------------------------------------------------------
+\rc{DC~10. ``In Figure~7 authors drop MCD from the detection time figure on
+visualization grounds rather than using a log-scale axis or separate table entry;
+this is a questionable presentation choice that obscures a meaningful data point.''}
+
+\rr MCD ($347\times$ slower than Viyog) is retained in Fig.~12(a) on a log-scale
+axis. The caption notes that it was omitted from the linear-scale scatter to
+preserve resolution for the other methods, not to hide the data.
+\done{Fig.~12(a) log-scale; caption note (p.~10)}
+
+% ------ DC 11 -----------------------------------------------------------------
+\rc{DC~11. ``62 references for a 9-page paper leaves insufficient space for thorough
+method exposition and suggests the related work section may be disproportionate
+relative to the technical contribution.''}
+
+\rr The revised paper fits within the 14-page limit (expanded scope and
+experiments); the reference count is now proportionate to the expanded coverage.
+Redundant citations have additionally been pruned from 62 to 47.
+\done{Reference list (pruned 62$\to$47; \texttt{final.tex} bibliography, pp.~13--14)}
+
+% ------ DC 12 -----------------------------------------------------------------
+\rc{DC~12. ``The writing style exhibits inconsistencies including irregular em-dash
+usage and unexplained italicization that suggest uneven editorial attention. The
+authors should revise for stylistic consistency.''}
+
+\rr A global style pass unified em-dash usage, removed unexplained italicisation,
+and standardised all notation throughout.
+\done{Global notation/style pass (throughout final.tex; em-dashes, italics, symbol definitions at first use; throughout)}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section*{Reviewer C}
+\noindent\textit{Reviewer C's Detailed Comments
+section restates the same content as the weaknesses; we address all four weakness
+points (W1--W4) below.}
+
+% ------ W1 -------------------------------------------------------------------
+\rc{W1. ``The paper shows that a white box attacker can bypass Viyog by adding a
+simple norm preservation penalty to the attack. This suggests that the method can be
+defeated with small changes to standard PGD. The authors describe this failure mode
+as safer, but it still raises concerns about robustness.''}
+
+\rr \emph{Strengthened to 0\% evasion.} Proposition~1 (P1) proves $V$ is
+$0$-homogeneous per channel: a norm-preserving attacker \emph{cannot move} $V$ by
+construction. Empirically, on 20 architectures (Fig.~14):
+\begin{itemize}[leftmargin=1.2em,nosep]
+\item A0 (standard PGD): $V$ AUROC~0.93.
+\item A1 (norm-preserving): \textbf{0\% evasion} --- P1 holds exactly.
+\item A2 (TV-aware, white-box on deployed $V$): erodes to 0.64 worst-case;
+      the complementary HF read holds at 0.74.
+\item A3 (both-aware): costs the attacker \textbf{8\%} success (A2~88.9\%$\to$A3~81.1\%);
+      the combined $\max(V_{\mathrm{TV}},V_{\mathrm{HF}})$ floors at AUROC~0.68.
+\item EOT stochastic defence: restores $V$ to \textbf{0.82}; 18/20 archs
+      improve above the diagonal.
+\end{itemize}
+On GTSRB the combined detector floors at \textbf{0.775} while attack success
+$\ge$80\% --- an attacker either keeps the detector above chance or surrenders
+most success on both datasets.
+\done{Proposition~1 (pp.~3--4); Sec.~VII A0--A3$+$EOT (p.~8); Fig.~14 (p.~11)}
+
+% ------ W2 -------------------------------------------------------------------
+\rc{W2. ``The CNN results are reported as single seed values. The authors
+acknowledge this limitation, but multi seed evaluation is only provided for Swin-T.
+This leaves some uncertainty about the stability and reproducibility of the main
+results.''}
+
+\rr Addressed above (B~DC~3): full 20-arch training-seed CIs are now delivered.
+Per-architecture T2 std $\le$0.004 --- the headline separation is a property of
+the dormant-band statistic, not a lucky seed.
+\done{Fig.~8 (p.~7)}
+
+% ------ W3 -------------------------------------------------------------------
+\rc{W3. ``The lowest AUROC reported is 75.53 on DenseNet with MNIST, which is a
+relatively simple dataset. Also, all experiments are limited to image classification.
+It is not clear how well the method would work for NLP or tabular data.''}
+
+\rr \emph{Two separate issues resolved.}
+(i)~The DenseNet-MNIST degeneracy (25/64 dead first-conv filters) is fixed by
+active-channel selection, restoring T2 to 0.80.
+(ii)~75.53 is a \emph{different} evaluation (DenseNet, MNIST-as-OOD, task T1);
+we list it as a genuine limitation.
+(iii)~Non-vision is now probed with a 1D-CNN on band-limited multi-sinusoid
+signals: Viyog T2 \textbf{0.96} vs.\ raw \Linf{} 0.71 at the first
+\texttt{Conv1d} (3 seeds, Fig.~18), confirming the mechanism is modality-agnostic.
+\done{Sec.~IX-B limitation (ii) (p.~11, l.~586); App.~B \& Fig.~18 (p.~13)}
+
+% ------ W4 -------------------------------------------------------------------
+\rc{W4. ``Overall, the proposed technique is vulnerable to adaptive attacks and
+lacks multi seed evaluation for the main results, which limits confidence.''}
+
+\rr Both concerns are now resolved: 0\% evasion under norm-preserving A1 (P1),
+full A0--A3 ladder showing the cost-of-evasion trade-off (Sec.~VII), and
+full-20-arch seed CIs (Fig.~8). See W1 and W2 above for details.
+\done{Fig.~8; Fig.~14; Proposition~1 (pp.~3--4, 7, 11)}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section*{Reviewer D}
+\noindent\textit{We address all 3 detailed comment
+paragraphs (DC~1--3) below.}
+
+% ------ DC 1 ------------------------------------------------------------------
+\rc{DC~1. ``An important improvement would be to evaluate Viyog as part of a
+complete anomaly-handling pipeline rather than in isolation. Integrating it with
+common first-stage OOD detectors and reporting system-level metrics would clarify
+how errors propagate across stages. This would help quantify real-world reliability
+and identify whether Viyog mitigates or amplifies mistakes made upstream.''}
+
+\rr This concern is fully addressed by the same two-stage cascade experiment
+described above in A~DC~1--2. Viyog \emph{mitigates} upstream
+FP errors: end-to-end ADV recall lifts from 0.16 to 0.84; ID$\to$ADV
+mis-escalation drops to 5.2\% (median 0).
+\done{Table~V \& Fig.~15 (p.~11); Sec.~IX-A (p.~10, l.~569)}
+
+% ------ DC 2 ------------------------------------------------------------------
+\rc{DC~2. ``The method could be improved by explicitly addressing near-distribution
+or semantically similar OOD inputs. Evaluations on harder OOD benchmarks, combined
+with augmenting the detector using complementary early-layer statistics or adaptive
+layer selection, would strengthen robustness in ambiguous scenarios where OOD inputs
+resemble in-distribution data.''}
+
+\rr \emph{All three requests addressed.}
+\emph{Near-OOD split (17 archs):} far-OOD T3~\textbf{0.96}, near-OOD~\textbf{0.74}
+(up to 0.95), texture-OOD~0.67 --- graceful degradation, not collapse; a new
+figure (Fig.~11) plots the full far/near/texture breakdown and shows a
+high-frequency dorm-band read \emph{complements} the total-variation read,
+recovering texture-OOD to \textbf{0.92}.
+\emph{Complementary statistics:} logit+Viyog gives balanced accuracy
+\textbf{0.757/0.768} (CIFAR-100/GTSRB); the full LDA panel reaches
+\textbf{0.798/0.863}; bootstrap 95\% CIs are disjoint from Energy-only (Fig.~7).
+\emph{Adaptive layer selection:} depth sweep confirms first conv is the global
+optimum for $V$ (mean T2~0.965), exceeding a raw-norm layer oracle at every depth.
+\emph{T3 breakdown across 20 archs, 4 attacks, 3 datasets} (Fig.~9): minimum T3
+across all conditions is 0.77; FGSM shows the highest T3 (0.89) and APGD-CE the
+lowest (0.77), consistent across all three datasets.
+\done{Figs.~7, 9, 10, 11 (pp.~7--9); Secs.~VI-A (p.~6, l.~407), VI-B (p.~7, l.~427)}
+
+% ------ DC 3 ------------------------------------------------------------------
+\rc{DC~3. ``Viyog would benefit from a more comprehensive adaptive threat model.
+Testing against multi-objective attacks that simultaneously preserve norms and
+manipulate early activations, along with simple defense-hardening strategies such as
+stochastic feature sampling, would better characterise worst-case robustness and
+reinforce the safety claims.''}
+
+\rr \emph{Completed.} EOT evaluation across 20 architectures (Fig.~14b):
+the stochastic dorm-band defence restores mean T2 to \textbf{0.82} where a
+fixed-band read drops to 0.68 under the same attacker; 18/20 architectures
+improve above the diagonal.
+A stronger held-out-basis A4 attacker (6 archs) reaches the same qualitative
+conclusion with $\approx$15\% success surrendered.
+\done{Fig.~14(b) EOT panel (p.~11); Sec.~VII-B (p.~9, l.~481)}
+
+% ── Closing summary ──────────────────────────────────────────────────────────
+\noindent\rule{\columnwidth}{0.4pt}
+
+\noindent\textbf{Completeness of new experiments.} The revised manuscript now
+reports experiments across \textbf{3 datasets $\times$ 20 architectures $\times$
+4 standard attacks $\times$ 11 detectors} plus the adaptive families:
+full-20-architecture training-seed CIs, EOT (20 archs), measured H200 latency
+(all 11 \texttt{pytorch-ood} baselines), an on-silicon roofline (two edge
+accelerators), a 1D non-vision sanity check, the near/texture-OOD breakdown, and
+the A0--A3 adaptive ladder on two datasets.
+
+\noindent\rule{\columnwidth}{0.4pt}
+
+\vspace{3pt}
+\noindent We believe the revised manuscript fully addresses all concerns and are
+grateful for the detailed, constructive reviews.
+
+\balance
+\end{document}
