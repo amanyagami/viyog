@@ -6,6 +6,9 @@
 [![Docs](https://readthedocs.org/projects/viyog/badge/?version=latest)](https://viyog.readthedocs.io/en/latest/)
 [![Tests](https://github.com/amanyagami/viyog/actions/workflows/test.yml/badge.svg)](https://github.com/amanyagami/viyog/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
+[![Live demo](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-009E73)](https://huggingface.co/spaces/amanyagami/viyog)
+
+**[▶ Try the interactive leaderboard](https://huggingface.co/spaces/amanyagami/viyog)** — Viyog vs 9 `pytorch-ood` baselines across 20 architectures.
 
 **Separate adversarial (ADV) inputs from out-of-distribution (OOD) inputs — in one forward pass, with no training and no gradients.**
 

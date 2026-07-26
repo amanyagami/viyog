@@ -38,6 +38,7 @@ metrics = ["scikit-learn>=1.1"]
 Homepage = "https://github.com/amanyagami/viyog"
 Repository = "https://github.com/amanyagami/viyog"
 Documentation = "https://viyog.readthedocs.io"
+Demo = "https://huggingface.co/spaces/amanyagami/viyog"
 Issues = "https://github.com/amanyagami/viyog/issues"
 Changelog = "https://github.com/amanyagami/viyog/blob/main/CHANGELOG.md"
 

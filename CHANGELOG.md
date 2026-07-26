@@ -4,6 +4,12 @@ All notable changes to `viyog` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-07-13
+
+### Added
+- Link to the live interactive demo (Hugging Face Space) — README badge + `Demo`
+  project URL on PyPI: https://huggingface.co/spaces/amanyagami/viyog
+
 ## [0.1.2] — 2026-07-13
 
 ### Added
