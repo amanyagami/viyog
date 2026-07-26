@@ -304,6 +304,7 @@ docs/source/_autosummary/
 /results/multiseed/
 /results/cifar10/
 /results/gtsrb/
+/experiments/results/
 /.venvs/
 /logs/
 
