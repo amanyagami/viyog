@@ -17,7 +17,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Format
-        run: uvx ruff format . --check --diff
+        run: uvx ruff format src/ tests/ examples/ --check --diff
 
       - name: Lint
-        run: uvx ruff check --output-format=github .
+        run: uvx ruff check --output-format=github src/ tests/ examples/

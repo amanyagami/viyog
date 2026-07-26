@@ -8,7 +8,11 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"
+      # Exact semver release tags only (v0.1.3) -- deliberately does NOT match
+      # suffixed tags like v0.1.3-codes26-ae (used to snapshot the CODES 2026
+      # AE artifact), which must never trigger a PyPI re-publish of an
+      # already-released version.
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
   build-and-publish:

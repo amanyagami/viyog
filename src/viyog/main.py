@@ -167,9 +167,7 @@ class Viyog:
     # ---------------------------------------------------------------- helpers
     def _ensure_device(self) -> torch.device:
         if self.device is None:
-            self.device = next(
-                (p.device for p in self.model.parameters()), torch.device("cpu")
-            )
+            self.device = next((p.device for p in self.model.parameters()), torch.device("cpu"))
         return self.device
 
     def _forward_features(self, x: torch.Tensor) -> torch.Tensor:
@@ -267,7 +265,7 @@ class Viyog:
             raise RuntimeError("id_loader produced no batches.")
 
         profile = (sum_fmean / count).float()  # (C,) mean |act| per channel
-        mean_tv = (sum_tv / count).float()      # (C,) mean TV per channel
+        mean_tv = (sum_tv / count).float()  # (C,) mean TV per channel
         C = profile.numel()
         self.n_channels_ = int(C)
         self.id_profile_ = profile
@@ -389,8 +387,7 @@ def viyog_metrics(
         from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
     except ImportError as exc:  # pragma: no cover - trivial guard
         raise ImportError(
-            "viyog_metrics needs scikit-learn. Install it with: "
-            "pip install 'viyog[metrics]'"
+            "viyog_metrics needs scikit-learn. Install it with: pip install 'viyog[metrics]'"
         ) from exc
 
     neg = np.asarray(ood_scores, dtype=np.float64)

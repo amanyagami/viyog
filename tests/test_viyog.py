@@ -25,8 +25,7 @@ class _SmallConvNet(torch.nn.Module):
 def _smooth_images(n: int, size: int = 16) -> torch.Tensor:
     """Low-frequency (spatially smooth) images: upsampled coarse noise."""
     coarse = torch.randn(n, 3, size // 4, size // 4)
-    return torch.nn.functional.interpolate(coarse, size=size, mode="bilinear",
-                                            align_corners=False)
+    return torch.nn.functional.interpolate(coarse, size=size, mode="bilinear", align_corners=False)
 
 
 def _loader(x: torch.Tensor, bs: int = 4) -> DataLoader:
@@ -107,6 +106,7 @@ def test_explicit_layer_and_dorm_pct() -> None:
 
 def test_conv1d_signal_model() -> None:
     """1-D signal path: a Conv1d first layer yields (B, C, L) maps."""
+
     class _Sig(torch.nn.Module):
         def __init__(self) -> None:
             super().__init__()
