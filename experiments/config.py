@@ -87,9 +87,16 @@ MODELS: dict[str, tuple[str, Path | None]] = {
 }
 NUM_CLASSES = 100  # CIFAR-100
 
-# HuggingFace repo for downloading weights
-HF_REPO = "amanyagami/Cifar100_Finetuned"
-HF_WEIGHT_FILES = [
+# Canonical HuggingFace repo for downloading weights: the full 20-architecture
+# CIFAR-100 panel + cifar10/gtsrb, laid out exactly as weight_path() expects
+# (4 legacy flat files at repo root, everything else namespaced
+# <dataset>/<model>.pth) so a plain snapshot_download() needs no renaming.
+# amanyagami/Cifar100_Finetuned is an older, incomplete (4-file) mirror kept
+# only for provenance — not used by 01_download.py.
+HF_REPO = "amanyagami/viyog-weights"
+# The original 4 finetuned checkpoints, which keep legacy flat filenames at
+# the repo root (see _CIFAR100_WEIGHTS below).
+HF_LEGACY_WEIGHT_FILES = [
     "convnextv2_base_cifar100.pth",
     "swin_tiny_patch4_window7_224_cifar100.pth",
     "tf_efficientnetv2_l_cifar100.pth",

@@ -12,6 +12,18 @@ a resource-constrained second-stage detector:
   * detection latency (ms/img) and throughput (img/s) for (a) the FULL forward and
     (b) FIRST-CONV-ONLY (what Viyog actually costs), warm-timed with CUDA sync.
 
+The "full forward" MAC count is computed with `fvcore.nn.FlopCountAnalysis` (a
+maintained, trace-based counter with handlers for matmul/bmm/einsum/attention,
+not just Conv2d/Linear) — this is the correct denominator for
+firstconv_mac_ratio_%. An earlier version of this script used a hand-rolled
+Conv2d/Linear-only forward-hook (`total_macs`, kept below for the audit trail)
+that silently undercounts any architecture whose forward pass isn't pure
+conv+linear: it missed attention matmuls entirely (verified: it captured only
+~1% of true MACs on ViT-base and Swin-tiny) and missed the H×W spatial
+multiplier for ConvNeXtV2's per-position Linear "convs" (~4% of true MACs).
+Both `macs_full_G` (fvcore, correct) and `macs_full_hookonly_G` (the old
+hand-rolled count, for transparency/comparison) are always reported.
+
 CPU-light; one GPU briefly. Run on a free GPU:
     CUDA_VISIBLE_DEVICES=1 python experiments/eval_systems.py --dataset cifar100 \
         --models mobilenetv3_l effnet_lite0 resnet50 [--csv out.csv]
@@ -39,8 +51,15 @@ def conv_macs(layer: nn.Conv2d, out_hw: tuple[int, int]) -> int:
     return cout * cin * kh * kw * oh * ow
 
 
-def total_macs(model: nn.Module, x: torch.Tensor) -> tuple[int, dict]:
-    """Sum conv+linear MACs via forward hooks for one input."""
+def total_macs_hookonly(model: nn.Module, x: torch.Tensor) -> tuple[int, dict]:
+    """Sum conv+linear MACs via forward hooks for one input.
+
+    Kept only as an audit-trail comparison against fvcore_macs() (below), which
+    is the correct full-model MAC count used for firstconv_mac_ratio_%. This
+    hook undercounts any architecture using attention (misses matmul/bmm
+    entirely) or per-position Linear "convs" (misses the H×W multiplier) — do
+    not use it as the ratio denominator.
+    """
     macs = {"total": 0}
     handles = []
 
@@ -60,6 +79,23 @@ def total_macs(model: nn.Module, x: torch.Tensor) -> tuple[int, dict]:
     for h in handles:
         h.remove()
     return macs["total"], macs
+
+
+def fvcore_macs(model: nn.Module, x: torch.Tensor) -> float:
+    """Full-model MAC count via fvcore's trace-based FlopCountAnalysis.
+
+    This is the correct denominator for firstconv_mac_ratio_%: fvcore has
+    handlers for matmul/bmm/einsum/addmm (attention) in addition to conv/linear,
+    and its "flop" convention counts one fused multiply-add as one unit — the
+    same convention conv_macs()/total_macs_hookonly() use, so values are
+    directly comparable with no factor-of-2 conversion needed.
+    """
+    from fvcore.nn import FlopCountAnalysis
+
+    analysis = FlopCountAnalysis(model, x)
+    analysis.unsupported_ops_warnings(False)
+    analysis.uncalled_modules_warnings(False)
+    return float(analysis.total())
 
 
 @torch.no_grad()
@@ -100,8 +136,10 @@ def main() -> None:
         x1 = torch.randn(1, 3, 224, 224, device=DEVICE)
         x64 = torch.randn(64, 3, 224, 224, device=DEVICE)
 
-        # MACs
-        full_macs, _ = total_macs(nm, x1)
+        # MACs: fvcore is the correct full-model count (handles attention);
+        # the hand-rolled hook is kept alongside only as an audit-trail column.
+        full_macs = fvcore_macs(nm, x1)
+        hookonly_macs, _ = total_macs_hookonly(nm, x1)
         with torch.no_grad():
             from model_utils import FirstLayerHook
             with FirstLayerHook(nm) as hk:
@@ -134,6 +172,8 @@ def main() -> None:
             "params_M": round(count_params(nm) / 1e6, 2),
             "firstconv_params_K": round(count_params(first) / 1e3, 2),
             "macs_full_G": round(full_macs / 1e9, 3),
+            "macs_full_hookonly_G": round(hookonly_macs / 1e9, 3),
+            "hookonly_coverage_%": round(100 * hookonly_macs / max(full_macs, 1), 2),
             "macs_firstconv_M": round(fc_macs / 1e6, 2),
             "firstconv_mac_ratio_%": round(100 * fc_macs / max(full_macs, 1), 4),
             "lat_full_ms_per_img": round(ms_full / 64, 4),
@@ -144,6 +184,7 @@ def main() -> None:
         }
         rows.append(row)
         print(f"  {model:16} params={row['params_M']}M  fc_MAC%={row['firstconv_mac_ratio_%']}  "
+              f"(hookonly covered {row['hookonly_coverage_%']}% of true MACs)  "
               f"lat_full={row['lat_full_ms_per_img']}ms  lat_fc={row['lat_firstconv_ms_per_img']}ms  "
               f"mem_b1={row['peak_mem_b1_MB']}MB")
         del nm
