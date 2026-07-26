@@ -24,9 +24,17 @@ multiplier for ConvNeXtV2's per-position Linear "convs" (~4% of true MACs).
 Both `macs_full_G` (fvcore, correct) and `macs_full_hookonly_G` (the old
 hand-rolled count, for transparency/comparison) are always reported.
 
+The GPU latency numbers above are wall-clock on whatever GPU happens to run
+this script, so they aren't reproducible across reviewer hardware. --onnx-cpu
+adds a second, portable latency anchor: export each model (and the first-conv
+layer alone) to ONNX and time it under onnxruntime's CPUExecutionProvider —
+every reviewer regenerates the same *relative* full-vs-first-conv cost on
+whatever CPU they have, independent of GPU model. Best-effort per architecture
+(falls back to NaN + a warning if an export fails, never aborts the run).
+
 CPU-light; one GPU briefly. Run on a free GPU:
     CUDA_VISIBLE_DEVICES=1 python experiments/eval_systems.py --dataset cifar100 \
-        --models mobilenetv3_l effnet_lite0 resnet50 [--csv out.csv]
+        --models mobilenetv3_l effnet_lite0 resnet50 [--csv out.csv] [--onnx-cpu]
 """
 from __future__ import annotations
 
@@ -111,11 +119,55 @@ def time_forward(model: nn.Module, x: torch.Tensor, iters: int = 50) -> float:
     return 1e3 * (time.perf_counter() - t0) / iters
 
 
+def onnx_cpu_latency_ms(model: nn.Module, x_shape: tuple[int, ...], iters: int = 20) -> float:
+    """Export `model` to ONNX and time a warm CPU forward pass (ms/batch).
+
+    A hardware-portable companion to time_forward()'s GPU wall-clock: every
+    reviewer gets the same execution provider (ONNX Runtime, CPUExecutionProvider)
+    regardless of which GPU (or none) they have, so the *ratio* between full and
+    first-conv-only latency is reproducible across machines even though absolute
+    GPU latency isn't.
+    """
+    import io
+
+    import onnxruntime as ort
+
+    x_cpu = torch.randn(*x_shape)
+    buf = io.BytesIO()
+    torch.onnx.export(
+        model.cpu().eval(),
+        x_cpu,
+        buf,
+        input_names=["x"],
+        output_names=["y"],
+        opset_version=17,
+        do_constant_folding=True,
+        dynamo=False,  # legacy TorchScript-based exporter; avoids an onnxscript dependency
+    )
+    sess = ort.InferenceSession(buf.getvalue(), providers=["CPUExecutionProvider"])
+    in_name = sess.get_inputs()[0].name
+    feed = {in_name: x_cpu.numpy()}
+
+    for _ in range(3):
+        sess.run(None, feed)
+    t0 = time.perf_counter()
+    for _ in range(iters):
+        sess.run(None, feed)
+    return 1e3 * (time.perf_counter() - t0) / iters
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="cifar100", choices=list(config.DATASET_SPECS))
     ap.add_argument("--models", nargs="+", default=None)
     ap.add_argument("--csv", default=None)
+    ap.add_argument(
+        "--onnx-cpu",
+        action="store_true",
+        help="Add a hardware-portable ONNX Runtime CPU latency anchor (full model + "
+        "first-conv-only) alongside the GPU wall-clock numbers. Best-effort per "
+        "architecture; slower (exports + times on CPU), so opt-in.",
+    )
     args = ap.parse_args()
     config.set_dataset(args.dataset)
 
@@ -182,11 +234,32 @@ def main() -> None:
             "peak_mem_b1_MB": round(mem1, 1),
             "peak_mem_b64_MB": round(mem64, 1),
         }
+        if args.onnx_cpu:
+            # Moves nm to CPU in-place — must run last, after every GPU-based
+            # measurement above, since nothing GPU-side needs `nm` afterward.
+            in_ch = first.in_channels
+            try:
+                row["lat_full_onnxcpu_ms"] = round(onnx_cpu_latency_ms(nm, (1, 3, 224, 224)), 4)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [onnx-cpu] {model}: full-model export/timing failed ({e})")
+                row["lat_full_onnxcpu_ms"] = float("nan")
+            try:
+                row["lat_firstconv_onnxcpu_ms"] = round(
+                    onnx_cpu_latency_ms(first, (1, in_ch, 224, 224)), 4
+                )
+            except Exception as e:  # noqa: BLE001
+                print(f"  [onnx-cpu] {model}: first-conv export/timing failed ({e})")
+                row["lat_firstconv_onnxcpu_ms"] = float("nan")
+
         rows.append(row)
-        print(f"  {model:16} params={row['params_M']}M  fc_MAC%={row['firstconv_mac_ratio_%']}  "
-              f"(hookonly covered {row['hookonly_coverage_%']}% of true MACs)  "
-              f"lat_full={row['lat_full_ms_per_img']}ms  lat_fc={row['lat_firstconv_ms_per_img']}ms  "
-              f"mem_b1={row['peak_mem_b1_MB']}MB")
+        msg = (f"  {model:16} params={row['params_M']}M  fc_MAC%={row['firstconv_mac_ratio_%']}  "
+               f"(hookonly covered {row['hookonly_coverage_%']}% of true MACs)  "
+               f"lat_full={row['lat_full_ms_per_img']}ms  lat_fc={row['lat_firstconv_ms_per_img']}ms  "
+               f"mem_b1={row['peak_mem_b1_MB']}MB")
+        if args.onnx_cpu:
+            msg += (f"  onnxcpu_full={row['lat_full_onnxcpu_ms']}ms  "
+                    f"onnxcpu_fc={row['lat_firstconv_onnxcpu_ms']}ms")
+        print(msg)
         del nm
         torch.cuda.empty_cache()
 
