@@ -76,17 +76,26 @@ downloads, not compute).
 Expected: prints the best signature per task per model and writes
 `results/analysis/signature_auroc_full_<model>.csv`.
 
+    uv run python experiments/full_eval.py --dataset cifar100
+
+Expected: prints per-task tables (T1/T2/T3) ranking every detector, and
+writes `results/analysis/full_eval_cifar100_summary.csv`. Check the
+`ViyogD_tv_dorm` row in the "T2: ID-vs-ADV" table against README's
+"Expected headline numbers" table:
+
+    T2 mean_dl ~ 0.94   T3 mean_dl ~ 0.78   (this 6-model core tier's own numbers --
+    NOT the paper's 0.966/0.824 headline, which averages the full 20-arch panel; see
+    README's "Reproducing the paper" section for why these differ and why that's expected)
+
+(Small deviations from seed/hardware nondeterminism are expected -- e.g. this
+exact run measured 0.940/0.777; large deviations, e.g. off by more than a
+few hundredths of AUROC, indicate a setup problem worth reporting.)
+
     uv run python experiments/exp_master_table.py --dataset cifar100
 
-Expected: prints a ranked detector table and writes
-`results/analysis/master_comparison_cifar100.csv`. Check the
-`ViyogD_tv_dorm` row against README's "Expected headline numbers" table:
-
-    T2_ID_ADV ~ 0.966   T3_OOD_ADV ~ 0.824   state_mem_KB = 0.28
-
-(Small deviations from seed/hardware nondeterminism are expected; large
-deviations, e.g. off by more than a few hundredths of AUROC, indicate a
-setup problem worth reporting.)
+Expected: prints a ranked detector table (reads the full_eval_cifar100_summary.csv
+just written above) and writes `results/analysis/master_comparison_cifar100.csv`
+with the same T2/T3 numbers, alongside the logit/distance baseline comparison.
 
 Optional -- regenerate the paper's figures/tables from these results:
 

@@ -50,12 +50,24 @@ Concretely, Tier T1 in README/INSTALL:
      total variation) that ships in `src/viyog/main.py` -- the same formula,
      verified line-for-line against `experiments/06b_extract_full.py`'s
      reference extractor,
-  6. and reproduces the paper's headline numbers (`ViyogD_tv_dorm`:
-     T2 AUROC ~0.966, T3 AUROC ~0.824, 0.28 KB detector state).
+  6. and reproduces this 6-model core tier's own numbers (`ViyogD_tv_dorm`:
+     T2 AUROC ~0.94, T3 AUROC ~0.78, 0.28 KB detector state) -- lower than
+     the paper's headline 0.966/0.824 because that headline averages over
+     the full 20-architecture panel (Tier T2) and this 6-model subset
+     includes ViT-base, a notably weaker performer on T2/T3 that pulls the
+     6-model mean down. This is not measurement noise: it matches the
+     pre-existing 3-seed check (`results/analysis/multiseed_viyogd.csv`,
+     same 6 models, T2 = 0.936-0.940 / T3 = 0.768-0.782 across seeds) to
+     within a few thousandths. Reproducing the exact 0.966/0.824 headline
+     requires the full 20-architecture Tier-T2 sweep.
 
 This was executed end-to-end during artifact preparation on a single CUDA
 GPU (an H200); see REQUIREMENTS for what hardware a reviewer needs and
-INSTALL for the exact commands and expected outputs.
+INSTALL for the exact commands and expected outputs. Real measured
+wall-clock on that run: adversarial generation for all 6 models x 4 attacks
+= 22s; first-conv feature extraction (dominated by one-time OOD dataset
+downloads, not compute) = ~44 min; signature recomputation = 93s; total
+~46 min end to end after the checkpoints were already fetched.
 
 What this artifact does not claim
 -------------------------------------

@@ -58,10 +58,15 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   (torchvision's own download URLs) and the checkpoints from HuggingFace.
   Dataset download speed is the dominant, most variable cost of this tier --
   it is bounded by your network to those mirrors, not by this repository.
-- Time: highly network-dependent (see above); GPU compute itself is fast --
-  adversarial generation for all 6 core models x 4 attacks completed in
-  under a minute on the reference hardware (one H200). See INSTALL for the
-  measured end-to-end wall-clock on the reference machine.
+- Time: highly network-dependent (see above); GPU compute itself is fast.
+  Measured end-to-end on the reference hardware (one H200, with the 6
+  checkpoints already fetched): adversarial generation for all 6 core
+  models x 4 attacks = 22 seconds; first-conv feature extraction across the
+  ID + 10 OOD + 4 ADV splits = ~44 minutes, almost entirely the one-time OOD
+  dataset downloads rather than compute (they're cached by torchvision
+  afterward, so a second run is much faster); signature recomputation = 93
+  seconds; the final comparison table = 1 second. Total ~46 minutes, most
+  of it a one-time download, not GPU work.
 
 Tier T2 -- extended (optional, not required for the claimed badges)
 ----------------------------------------------------------------------
