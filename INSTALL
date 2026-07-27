@@ -111,7 +111,7 @@ more disk.
 
 Demo (optional, no GPU/weights needed)
 -----------------------------------------
-    cd .. && make demo-data && make demo
+    make demo-data && make demo
 
 Expected: rebuilds `demo/data/*.csv` from `results/analysis/` and opens the
 interactive Viyog-vs-pytorch-ood leaderboard at http://localhost:7860.
