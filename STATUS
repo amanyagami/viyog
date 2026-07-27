@@ -10,7 +10,7 @@ experiments/, the paper source in paper_rev/, and an interactive
 leaderboard in demo/) is public, MIT-licensed (LICENSE), and archived at a
 persistent, version-specific DOI:
 
-    https://doi.org/10.5281/zenodo.21614318
+    https://doi.org/10.5281/zenodo.21616741
 
 (This is the version-specific DOI for the v0.1.3-codes26-ae release, not the
 concept DOI 10.5281/zenodo.21614317, which always resolves to the latest
