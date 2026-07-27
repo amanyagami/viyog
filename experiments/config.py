@@ -10,7 +10,10 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-ROOT = Path(os.environ.get("VIYOG_ROOT", "/mnt/data1/asing725/viyog"))
+# Default = the repo root (parent of this experiments/ dir) so a fresh clone
+# works with zero setup; set VIYOG_ROOT to override (e.g. to point at a
+# separate large-disk location for data/weights/results).
+ROOT = Path(os.environ.get("VIYOG_ROOT", str(Path(__file__).resolve().parent.parent)))
 DATA_DIR = Path(os.environ.get("VIYOG_DATA", str(ROOT / "data")))
 # Output roots accept an env override (default = canonical paths) so seed/experiment
 # runs can be namespaced to a separate directory without clobbering canonical results.
