@@ -27,10 +27,14 @@ Follow these guidelines precisely.
 
 ## Code Formatting and Linting
 
+Scope is `src/ tests/ examples/` (the installable package) -- matches CI.
+`experiments/` is the research/reproduction pipeline and isn't held to the
+same style bar.
+
 1. Ruff
-   - Format: `uv run --frozen ruff format .`
-   - Check: `uv run --frozen ruff check .`
-   - Fix: `uv run --frozen ruff check . --fix`
+   - Format: `uv run --frozen ruff format src/ tests/ examples/`
+   - Check: `uv run --frozen ruff check src/ tests/ examples/`
+   - Fix: `uv run --frozen ruff check src/ tests/ examples/ --fix`
 2. Pre-commit
    - Config: `.pre-commit-config.yaml`
    - Runs: on git commit
