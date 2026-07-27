@@ -8,8 +8,15 @@ Available
 The code (the `viyog` PyPI package, its full reproduction pipeline in
 experiments/, the paper source in paper_rev/, and an interactive
 leaderboard in demo/) is public, MIT-licensed (LICENSE), and archived at a
-persistent, version-specific DOI (see the HotCRP submission for the exact
-DOI/URL). It includes the five required documentation files (README,
+persistent, version-specific DOI:
+
+    https://doi.org/10.5281/zenodo.21614318
+
+(This is the version-specific DOI for the v0.1.3-codes26-ae release, not the
+concept DOI 10.5281/zenodo.21614317, which always resolves to the latest
+version and should not be cited per the AE call's guidance.)
+
+It includes the five required documentation files (README,
 REQUIREMENTS, STATUS, LICENSE, INSTALL) and is reasonable and complete: it
 installs cleanly from PyPI (`pip install viyog`) and from source (`uv
 sync`), and every claim in the paper maps to a specific script and a
