@@ -58,26 +58,33 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   (torchvision's own download URLs) and the checkpoints from HuggingFace.
   Dataset download speed is the dominant, most variable cost of this tier --
   it is bounded by your network to those mirrors, not by this repository.
-- Time: budget **2-3 hours** for a genuine first-time run with no cached
-  checkpoints/data/adversarial-examples -- this is dominated by real GPU
-  compute (APGD-CE alone is 100 gradient steps per batch, per model, on the
-  full 10k-image test set), not just network. Measured on a from-scratch
-  fresh clone (one H200, GPU otherwise idle, weights already fetched but
-  nothing else cached): adversarial generation for all 6 core models x 4
-  attacks took **2h 5min** end to end (APGD-CE on the slower architectures,
-  e.g. ViT-B, is the long pole at ~28 min per model on its own; small/fast
-  models like MobileNetV3 finish in a couple of minutes). An earlier,
-  now-corrected version of this file understated this step at "22 seconds"
-  -- that number was measured on a re-run where the .h5 files already
-  existed (the script skips regenerating files that are already present),
-  not a genuine first-time run; it was a real documentation bug, not a
-  hardware difference. First-conv feature extraction (ID + 10 OOD + 4 ADV
-  splits) adds further time dominated by the one-time OOD dataset
-  downloads (roughly 44 minutes when previously measured with everything
-  else cached -- expect more on a fully fresh clone); downloaded datasets
-  are cached afterward, so a second run of either step is much faster.
-  Signature recomputation and the final comparison table are each under
-  two minutes and not the bottleneck.
+- Time: budget **4+ hours** for a genuine first-time run against a fresh
+  clone with nothing cached (no checkpoints, no datasets, no generated
+  adversarial examples). This was measured directly, end to end, on a
+  brand-new `git clone` into an empty directory (one H200, GPU otherwise
+  idle, following INSTALL verbatim with no shortcuts):
+    - `01_download.py --core-only`: a few minutes (network-bound, ~250 MB).
+    - `03_gen_adversarial.py` (6 models x 4 attacks): **2h 5min**. Real GPU
+      compute, not network -- APGD-CE alone is 100 gradient steps per batch
+      per model on the full 10k-image test set. ViT-B is the long pole at
+      ~28 min on its own; small/fast models like MobileNetV3 finish in a
+      couple of minutes.
+    - `06b_extract_full.py` (ID + 10 OOD + 4 ADV splits x 6 models):
+      **1h 57min**. Dominated by first-time OOD dataset downloads over a
+      throttled connection, not compute.
+    - `09_signatures_full.py` + `full_eval.py` + `exp_master_table.py`:
+      each well under two minutes; CPU-bound post-processing over the
+      already-extracted features, not sensitive to caching.
+  Two earlier drafts of this file understated these numbers -- first at
+  "22 seconds" for the generation step (that was a re-run timing a
+  skip-existing-file check, not real generation), then at "~44 minutes"
+  for extraction (measured in a working directory that already had some
+  OOD datasets cached from unrelated prior research on the same machine,
+  not a genuine zero-cache run). Both were real documentation bugs, caught
+  by actually re-running the documented commands against a fresh clone.
+  A second run against the same clone (checkpoints/datasets/adversarial
+  examples already present) is far faster than the first, since nothing
+  gets regenerated or re-downloaded.
 
 Tier T2 -- extended (optional, not required for the claimed badges)
 ----------------------------------------------------------------------

@@ -139,7 +139,7 @@ and [STATUS](STATUS) for the full detail; the summary:
 | Tier | What it does | Hardware | Badge |
 | --- | --- | --- | --- |
 | **T0 — sanity** | `pytest` + `examples/quickstart.py --smoke` | CPU, ~2 min | Reviewed |
-| **T1 — core recompute** | Fetch the 6 core checkpoints, regenerate adversarial examples, extract first-conv features, recompute every signature's AUROC — from scratch, nothing cached | 1 CUDA GPU, 2-3 hours | **Reproducible** |
+| **T1 — core recompute** | Fetch the 6 core checkpoints, regenerate adversarial examples, extract first-conv features, recompute every signature's AUROC — from scratch, nothing cached | 1 CUDA GPU, 4+ hours (first run; much faster on a re-run) | **Reproducible** |
 | **T2 — extended** | Same pipeline, all 20 architectures + cifar10 | 1 CUDA GPU, longer | extra evidence |
 | **T3 — from scratch** | Re-finetune all 20 backbones from raw ImageNet weights | GPU-weeks | documented, out of scope |
 

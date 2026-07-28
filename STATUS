@@ -71,19 +71,25 @@ Concretely, Tier T1 in README/INSTALL:
 This was executed end-to-end during artifact preparation on a single CUDA
 GPU (an H200); see REQUIREMENTS for what hardware a reviewer needs and
 INSTALL for the exact commands and expected outputs. Real measured
-wall-clock on a genuine from-scratch fresh-clone run (nothing cached except
-the fetched checkpoints): adversarial generation for all 6 models x 4
-attacks = **2h 5min** (APGD-CE's 100 gradient steps/batch on the slower
-architectures is the long pole); first-conv feature extraction adds further
-time dominated by one-time OOD dataset downloads (~44 min when previously
-measured with everything else cached); signature recomputation and the
-final comparison table are each under two minutes. Budget 2-3 hours total
-for an honest first run; a second run re-using the same checkpoints/data is
-much faster since generated files aren't regenerated and downloads are
-cached. (An earlier draft of this file understated the first step at "22
-seconds" -- that was measured on a re-run where the files already existed,
-not a genuine first-time run; caught and corrected by actually re-running
-the documented commands against a fresh clone.)
+wall-clock on a genuine from-scratch fresh-clone run (git clone into an
+empty directory, nothing cached anywhere): adversarial generation for all
+6 models x 4 attacks = **2h 5min** (APGD-CE's 100 gradient steps/batch on
+the slower architectures is the long pole); first-conv feature extraction
+= **1h 57min** (dominated by first-time OOD dataset downloads over a
+throttled connection, not compute); signature recomputation and the final
+comparison table are each under two minutes. **Budget 4+ hours total for
+an honest first run.** A second run against the same clone is far faster,
+since generated files aren't regenerated and downloaded datasets aren't
+re-downloaded.
+
+Two earlier drafts of this file understated these numbers, both caught by
+actually re-running the documented commands against a fresh clone rather
+than trusting figures measured in an already-warm working directory: the
+generation step at "22 seconds" (that was a re-run timing a
+skip-existing-file check, not real generation), then extraction at
+"~44 min" (measured in a working directory that already had some OOD
+datasets cached from unrelated prior research on the same machine, not a
+genuine zero-cache run).
 
 What this artifact does not claim
 -------------------------------------
