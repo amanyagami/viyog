@@ -58,15 +58,26 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   (torchvision's own download URLs) and the checkpoints from HuggingFace.
   Dataset download speed is the dominant, most variable cost of this tier --
   it is bounded by your network to those mirrors, not by this repository.
-- Time: highly network-dependent (see above); GPU compute itself is fast.
-  Measured end-to-end on the reference hardware (one H200, with the 6
-  checkpoints already fetched): adversarial generation for all 6 core
-  models x 4 attacks = 22 seconds; first-conv feature extraction across the
-  ID + 10 OOD + 4 ADV splits = ~44 minutes, almost entirely the one-time OOD
-  dataset downloads rather than compute (they're cached by torchvision
-  afterward, so a second run is much faster); signature recomputation = 93
-  seconds; the final comparison table = 1 second. Total ~46 minutes, most
-  of it a one-time download, not GPU work.
+- Time: budget **2-3 hours** for a genuine first-time run with no cached
+  checkpoints/data/adversarial-examples -- this is dominated by real GPU
+  compute (APGD-CE alone is 100 gradient steps per batch, per model, on the
+  full 10k-image test set), not just network. Measured on a from-scratch
+  fresh clone (one H200, GPU otherwise idle, weights already fetched but
+  nothing else cached): adversarial generation for all 6 core models x 4
+  attacks took **2h 5min** end to end (APGD-CE on the slower architectures,
+  e.g. ViT-B, is the long pole at ~28 min per model on its own; small/fast
+  models like MobileNetV3 finish in a couple of minutes). An earlier,
+  now-corrected version of this file understated this step at "22 seconds"
+  -- that number was measured on a re-run where the .h5 files already
+  existed (the script skips regenerating files that are already present),
+  not a genuine first-time run; it was a real documentation bug, not a
+  hardware difference. First-conv feature extraction (ID + 10 OOD + 4 ADV
+  splits) adds further time dominated by the one-time OOD dataset
+  downloads (roughly 44 minutes when previously measured with everything
+  else cached -- expect more on a fully fresh clone); downloaded datasets
+  are cached afterward, so a second run of either step is much faster.
+  Signature recomputation and the final comparison table are each under
+  two minutes and not the bottleneck.
 
 Tier T2 -- extended (optional, not required for the claimed badges)
 ----------------------------------------------------------------------
