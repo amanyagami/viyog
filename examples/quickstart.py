@@ -4,10 +4,11 @@ Loads a real model, crafts PGD adversarials, and uses the packaged ``viyog.Viyog
 detector to score clean in-distribution (ID), out-of-distribution (OOD), and
 adversarial (ADV) inputs. Prints the three separation AUROCs.
 
-    pip install "viyog[metrics]" torch torchvision
+    pip install "viyog[metrics]"              # --smoke needs nothing else
+    pip install "viyog[metrics]" torchvision  # only needed for the real-data path
 
-    python examples/quickstart.py            # real data: downloads CIFAR-10 + SVHN
-    python examples/quickstart.py --smoke    # synthetic, no downloads (offline/CI)
+    python examples/quickstart.py          # real: downloads CIFAR-10 + SVHN + ResNet18 weights
+    python examples/quickstart.py --smoke  # synthetic data + a tiny CNN, no torchvision needed
 
 Expected shape of the result: ADV scores far above ID/OOD (strong ID-vs-ADV
 separation), a moderate OOD-vs-ADV gap, and weak ID-vs-OOD (Viyog is an ADV
@@ -45,6 +46,27 @@ class Normalized(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model((x - self.mean) / self.std)
+
+
+class _TinySmokeCNN(nn.Module):
+    """Stand-in for ResNet18 in --smoke mode, so it needs no torchvision.
+
+    conv1 matches ResNet18's real first-conv shape (Conv2d(3, 64, 7, stride=2,
+    padding=3)), so Viyog hooks a representative first layer even though
+    everything past it is a minimal random-init classifier head.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(64, 1000)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.relu(self.bn1(self.conv1(x)))
+        return self.fc(self.pool(x).flatten(1))
 
 
 def pgd(
@@ -95,10 +117,13 @@ def main() -> None:
     args = ap.parse_args()
     dev = args.device
 
-    import torchvision as tv
+    if args.smoke:
+        backbone = _TinySmokeCNN()
+    else:
+        import torchvision as tv
 
-    weights = None if args.smoke else tv.models.ResNet18_Weights.DEFAULT
-    model = Normalized(tv.models.resnet18(weights=weights), IMAGENET_MEAN, IMAGENET_STD)
+        backbone = tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT)
+    model = Normalized(backbone, IMAGENET_MEAN, IMAGENET_STD)
     model = model.to(dev).eval()
 
     id_all, ood_x = get_images(args)
