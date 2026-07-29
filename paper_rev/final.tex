@@ -882,7 +882,7 @@ now show it is also the \emph{cheapest}.}
 \end{figure*}
 
 Figs.~\ref{fig:baselines_cost}--\ref{fig:onsilicon} and Table~\ref{tab:edge}
-quantify the cost: Viyog uses $0.3$\,KB and $2.83\%$ of CNN MACs with no extra
+quantify the cost: Viyog uses $0.3$\,KB and $2.28\%$ of CNN MACs with no extra
 forward pass, runs $6$--$347\times$ faster than all baselines (H200, CUDA events),
 and draws $3.8\%$ of inference latency and $12\%$ of energy --- the best-separating
 detector is also the cheapest by orders of magnitude.
@@ -916,7 +916,7 @@ KNN & 20--40\,MB & 1 & $O(ND)$\\
 \caption{\rev{\textbf{Measured on-silicon detector cost and edge projection
 (closes the on-device request).} \textbf{(a)}~Per-architecture cost of the
 deployed $V(x)$ detector as a fraction of full inference: the exact MAC fraction
-(mean $2.83\%$) and the \emph{measured} batch-$1$ latency on an H200 (CUDA events;
+(mean $2.28\%$) and the \emph{measured} batch-$1$ latency on an H200 (CUDA events;
 mean $3.8\%$) agree, confirming a single-digit-\% second-stage tax on real
 silicon across CNNs, a ViT, and a ConvNeXt. \textbf{(b)}~Compute-bound roofline
 projection of the detector's per-image energy on real edge accelerators (Jetson

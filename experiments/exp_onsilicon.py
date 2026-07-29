@@ -210,30 +210,33 @@ def energy_per_img(
 
 @torch.no_grad()
 def count_macs(model: nn.Module, first: nn.Conv2d, x: torch.Tensor) -> tuple[int, int]:
-    """Return (full_macs, first_conv_macs) for one forward via hooks."""
-    total = {"v": 0}
+    """Return (full_macs, first_conv_macs).
+
+    full_macs is computed via fvcore.nn.FlopCountAnalysis, not a hand-rolled
+    Conv2d/Linear hook -- that hook undercounts any architecture using
+    attention (misses matmul/bmm entirely) or per-position Linear "convs"
+    (misses the H x W multiplier), verified to be off by 10-100x on
+    ViT/Swin/ConvNeXtV2/EdgeNeXt (see eval_systems.py). first_conv_macs is a
+    single Conv2d layer, computed directly (exact regardless of method).
+    """
+    from fvcore.nn import FlopCountAnalysis
+
+    analysis = FlopCountAnalysis(model, x)
+    analysis.unsupported_ops_warnings(False)
+    analysis.uncalled_modules_warnings(False)
+    full = int(analysis.total())
+
     fc = {"v": 0}
 
     def hook(mod: nn.Module, _inp: object, out: torch.Tensor) -> None:
-        if isinstance(mod, nn.Conv2d):
-            oh, ow = out.shape[2], out.shape[3]
-            cin = mod.in_channels // mod.groups
-            m = mod.out_channels * cin * mod.kernel_size[0] * mod.kernel_size[1] * oh * ow
-            total["v"] += m
-            if mod is first:
-                fc["v"] += m
-        elif isinstance(mod, nn.Linear):
-            total["v"] += mod.in_features * mod.out_features
+        oh, ow = out.shape[2], out.shape[3]
+        cin = mod.in_channels // mod.groups
+        fc["v"] = mod.out_channels * cin * mod.kernel_size[0] * mod.kernel_size[1] * oh * ow
 
-    handles = [
-        m.register_forward_hook(hook)
-        for m in model.modules()
-        if isinstance(m, (nn.Conv2d, nn.Linear))
-    ]
+    handle = first.register_forward_hook(hook)
     model(x)
-    for h in handles:
-        h.remove()
-    return total["v"], fc["v"]
+    handle.remove()
+    return full, fc["v"]
 
 
 def main() -> None:
