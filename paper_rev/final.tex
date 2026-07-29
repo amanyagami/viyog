@@ -35,6 +35,18 @@
 
 \newtheorem{proposition}{Proposition}
 
+% ---- Camera-ready page-limit fix: CODES+ISSS caps the revised manuscript at
+%      14 pages (references/appendices included); the unmodified bibliography
+%      pushed this to 15. Tighter (but still fully readable) inter-entry
+%      spacing in the reference list is standard IEEE practice for reclaiming
+%      exactly this kind of small overflow -- no text/content removed.
+\let\OLDthebibliography\thebibliography
+\renewcommand\thebibliography[1]{%
+  \OLDthebibliography{#1}%
+  \setlength{\itemsep}{0pt}%
+  \setlength{\parskip}{0pt}%
+}
+
 % ---- Revision highlighting (STEP 3): all passages added/changed to address a
 %      reviewer point are wrapped in ... and render in BLUE.
 %      Camera-ready: revision highlighting removed. ----
@@ -1289,7 +1301,6 @@ This research was supported by the ANCHOR Program through the Gangwon
 ANCHOR Center, funded by the Ministry of Education (MOE) and Gangwon State
 (G.S.), Republic of Korea (No. 2026-RISE-10-006).
 
-\balance
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
 
