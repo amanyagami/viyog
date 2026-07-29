@@ -16,10 +16,20 @@
 \usepackage{subcaption}
 \usepackage{stfloats}
 \usepackage{url}
-% hyperref in draft mode: cross-refs work but no PDF annotations/anchors are
-% created, which prevents lineno from placing anchors outside page bounds.
-\usepackage[draft]{hyperref}
-\usepackage{balance}
+% Camera-ready: hyperref runs in full (non-draft) mode. It was previously in
+% draft mode only to stop the review-time lineno package from placing link
+% anchors outside the page bounds; with line numbering removed for the
+% camera-ready, that workaround is no longer needed, so the published PDF now
+% carries working cross-reference/citation links, bookmarks, and metadata.
+% hidelinks: keep links live and clickable but draw no coloured boxes/borders
+% around them, which is the correct appearance for a print camera-ready.
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={Viyog: Separating Adversarial and Out-of-Distribution},
+  pdfauthor={A. Singh, A. Kumar, R. Kashyap, S. Park, A. Gurjar, Y. Ko, H. So, U. Hwang, K. Lee, A. Shrivastava},
+  pdfkeywords={out-of-distribution detection, adversarial detection, embedded AI, first-layer feature statistics},
+  bookmarksnumbered=true,
+}
 \usepackage{microtype}
 \usepackage{array}
 \usepackage{multirow}
@@ -27,13 +37,48 @@
 \usepackage{algpseudocode}
 \usepackage{makecell}
 \usepackage{amsthm}
-\usepackage[switch]{lineno}
 \usepackage{placeins}
 \usepackage{pifont}
 \newcommand{\cmark}{\ding{51}}% ✓
 \newcommand{\xmark}{\ding{55}}% ✗
 
 \newtheorem{proposition}{Proposition}
+
+% ---- Camera-ready page-limit fix (1/2): float and caption separation.
+%      CODES+ISSS caps the revised manuscript at 14 pages including
+%      references. This paper carries 24 floats; IEEEtran's default
+%      inter-float and caption skips are ~1 baseline each, so trimming them
+%      reclaims real vertical space across the document without touching a
+%      single word of text, any number, or any figure. Values stay well above
+%      the point where floats visually collide with body text.
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\dblfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{3pt}
+\setlength{\belowcaptionskip}{0pt}
+
+% ---- Float placement parameters.
+%      LaTeX's stock parameters are tuned for text-heavy papers with a couple
+%      of figures. This paper has 18 figures + 6 tables, and the defaults
+%      (textfraction=0.2 forcing >=20% text on every float page,
+%      floatpagefraction=0.5 letting a float page sit half empty) were leaving
+%      large gaps -- entire columns of whitespace around big figures. These
+%      values let floats pack densely instead. Nothing about the content,
+%      figures, or their order changes; only where LaTeX is permitted to put
+%      them. floatpagefraction < topfraction is required to avoid placement
+%      loops, and is respected here.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.80}
+\renewcommand{\dbltopfraction}{0.92}
+\renewcommand{\dblfloatpagefraction}{0.80}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\setcounter{dbltopnumber}{3}
 
 % ---- Camera-ready page-limit fix: CODES+ISSS caps the revised manuscript at
 %      14 pages (references/appendices included); the unmodified bibliography
@@ -65,7 +110,6 @@
 }
 
 \begin{document}
-\linenumbers  % enabled for reviewer navigation; placed after \begin{document} to avoid lineno+hyperref off-page anchors
 \maketitle
 
 % ---- Abstract -----------------------------------------------
@@ -104,7 +148,7 @@ generalization.
 \section{Introduction}
 \label{sec:intro}
 
-\linelabel{LL:secI}Deep neural networks (DNNs)
+Deep neural networks (DNNs)
 achieve state-of-the-art performance across
 safety-critical domains including autonomous driving,
 medical imaging, and embedded vision
@@ -120,7 +164,7 @@ demand active rejection. Conflating them wastes defences or silently accepts
 attacks. No existing lightweight detector makes this distinction; we show the
 signal is hidden in the \emph{first} layer.
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_problem_concept.pdf}
 \caption{\rev{\textbf{The core problem: OOD and ADV inputs require opposite responses, yet
 both fool the classifier.}
@@ -218,7 +262,7 @@ lock onto a fixed target---restores the panel to \textbf{0.82}
 \subsection{OOD Detection Methods}
 Table~\ref{tab:related} categorises prior work; surveys are in~\cite{yang2024generalized,hong2024out}. All methods collapse OOD and ADV into a single anomaly score; none provides a deployable second-stage separator. Szyc et al.~\cite{szyc2023ood} show that rankings are protocol-sensitive, motivating our multi-seed evaluation (Sec.~\ref{sec:setup}).
 
-\begin{table}[t]\centering\footnotesize
+\begin{table}[tb]\centering\footnotesize
 \caption{\rev{\textbf{Prior anomaly detectors and their OOD--ADV separation capability.}
 All existing families fail at second-stage OOD-vs-ADV separation.
 $\dagger$~Viyog is the only method that scores both T2 and T3 above chance
@@ -306,7 +350,7 @@ the pipeline below grounds this in deployment.
 
 In the Viyog two-stage pipeline (Fig.~\ref{fig:pipeline}), a standard inference pass is followed by a first-stage non-ID detector that flags inputs outside the in-distribution region, and Viyog partitions them into OOD and ADV using only the first-layer activation hook already computed in the forward pass (read as the dormant-band roughness statistic $V$). Without this second stage, a system cannot distinguish a novel but benign environment from an active adversarial attack. Prior joint approaches~\cite{nie2022diffusion,samangouei2018defense} cannot make this distinction at deployable cost; the downstream routing consequences are detailed in Sec.~\ref{sec:discussion}.
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_pipeline.pdf}
 \caption{\rev{\textbf{The Viyog two-stage deployment pipeline.}
 A normal forward pass drives a first-stage OOD gate (logit-based scores such as
@@ -341,7 +385,7 @@ frequency-domain analyses~\cite{wang2020high,wang2020towards,ziyadinov2023low}.
 \subsection{Why the First Layer?}
 \label{ssec:rawbaseline}
 
-\noindent\linelabel{LL:secIIIA}\textbf{Natural images are smooth at the first layer (Premise A1).}
+\noindent\textbf{Natural images are smooth at the first layer (Premise A1).}
 Natural image power spectra decay as $P(f)\!\propto\!f^{-2}$: low-frequency
 components (slow gradients, textures) dominate; rapid pixel-to-pixel oscillations
 are negligible.  Each first-layer channel $c$ produces a feature map
@@ -413,7 +457,7 @@ magnifies any roughness numerator increase while leaving natural inputs bounded.
 separates by \emph{type of signal} (natural vs.\ attack), not by \emph{size} of
 activation.}
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_mechanism.pdf}
 \caption{\rev{\textbf{The Viyog mechanism confirmed on real ResNet-50 features
 (CIFAR-100, $n{=}2000$ samples per class).}
@@ -529,7 +573,7 @@ simultaneously the cheapest and the best layer for the deployed read
 Given this shape-based score, the routing rule is straightforward.
 
 \subsection{Decision Rule and Downstream Routing}
-\linelabel{LL:secIVB}Given a pool of non-ID inputs flagged by a first-stage detector, Viyog
+Given a pool of non-ID inputs flagged by a first-stage detector, Viyog
 applies a second-stage partition:
 \begin{itemize}
   \item $\mathrm{Viyog}(x)>\tau$: \textbf{ADV} --- apply adversarial
@@ -552,7 +596,7 @@ to $25/64$ first-conv channels are permanently silent (e.g.\ DenseNet-121) and
 would otherwise force a degenerate score. Across the 37-statistic battery $V$ tops
 \emph{both} the ID-vs-ADV and OOD-vs-ADV rankings (Fig.~\ref{fig:sig_ranking}).
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=0.84\columnwidth]{figs/rebuttal/fig_sig_ranking.pdf}
 \caption{\rev{First-conv signature ranking by ID-vs-ADV (T2) AUROC on ResNet-50
 (37 candidate statistics), \textbf{coloured by statistic family}.
@@ -683,7 +727,7 @@ Fig.~\ref{fig:adaptive_ladder}), full-20 training-seed CIs
 (Fig.~\ref{fig:seed_forest}), and a 1D non-vision sanity check
 (Appendix~\ref{app:nonvision}).}
 
-\begin{table}[t]\centering\footnotesize
+\begin{table}[tb]\centering\footnotesize
 \setlength{\tabcolsep}{3.5pt}
 \renewcommand{\arraystretch}{1.1}
 \caption{\rev{\textbf{Experimental coverage}---everything evaluated, all under the
@@ -710,7 +754,7 @@ Non-vision sanity & 1D signals, FGSM/PGD & T2 AUROC \\
 \label{sec:results}
 
 \subsection{Detection Quality Across 20 Architectures}
-\rev{\linelabel{LL:secVIA}With the evaluation protocol of Sec.~\ref{sec:setup} fixed, we first report
+\rev{With the evaluation protocol of Sec.~\ref{sec:setup} fixed, we first report
 raw detection quality across all 20 backbones.}
 
 \begin{figure}[tb]
@@ -733,7 +777,7 @@ near-chance on T2; a three-way supervised head reaches \textbf{0.798} balanced a
 result is architecture- and dataset-stable.
 
 
-\begin{figure*}[t]\centering
+\begin{figure*}[tb]\centering
 \includegraphics[width=0.85\textwidth]{figs/rebuttal/fig_complementarity.pdf}
 \caption{\rev{\textbf{Combining a logit detector with Viyog yields three-way
 ID/OOD/ADV separation---each covers the other's blind spot.} Logit detectors
@@ -755,7 +799,7 @@ KNN) trail on T3, having pulled perturbations back toward the ID manifold at dee
 layers~\cite{lee2018simple}. Only the first-conv \emph{shape} statistic separates
 both (Sec.~\ref{ssec:rawbaseline}).
 
-\begin{table}[t]
+\begin{table}[tb]
 \centering
 \caption{\rev{\textbf{New directionless re-evaluation across 20 CIFAR-100
 architectures} (replaces the original far-OOD per-row table).
@@ -826,7 +870,7 @@ $0.3$\,KB and no extra forward pass, yet stays complementary to it
 
 \subsection{Near-OOD Difficulty and Shape-Depth Optimality}
 \label{ssec:norm_sweep}
-\rev{\linelabel{LL:secVIB}Having established overall separation, we break the T3 result by OOD difficulty and confirm that the first conv is globally optimal for the shape read. ID and OOD produce smooth dormant channels; adversarial perturbations leave high-frequency residue---the shape statistic separates ADV from ID/OOD at $O(C)$ cost (Fig.~\ref{fig:viyogd_sig}, Appendix~\ref{app:affine}).
+\rev{Having established overall separation, we break the T3 result by OOD difficulty and confirm that the first conv is globally optimal for the shape read. ID and OOD produce smooth dormant channels; adversarial perturbations leave high-frequency residue---the shape statistic separates ADV from ID/OOD at $O(C)$ cost (Fig.~\ref{fig:viyogd_sig}, Appendix~\ref{app:affine}).
 
 \emph{Harder near-OOD and texture splits.} Because near-distribution or
 texture-biased OOD may themselves perturb early activations, we break the
@@ -839,7 +883,7 @@ dorm-band read recovers texture-OOD to $0.92$ where the total-variation read is
 weakest, so pairing Viyog with a second early-layer statistic closes the
 texture case. The first conv is globally optimal for $V$: on the six-architecture depth sweep the shape read peaks at depth~0 (mean T2~$0.965$, T3~$0.918$; the slightly higher T3 than the 20-arch panel mean $0.824$ reflects the easier six-model subset) and decays with depth, while a raw-norm oracle across all depths still scores below it (Fig.~\ref{fig:shape_depth})---no adaptive layer selector is needed.}
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_shape_depth.pdf}
 \caption{\rev{\textbf{The first conv is the \emph{optimal} layer for the deployed
 shape read---adaptive layer selection is unnecessary.} ID-vs-ADV (T2) AUROC of
@@ -853,7 +897,7 @@ at \emph{any} depth---the cheapest layer is also the best.}}
 \label{fig:shape_depth}
 \end{figure}
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_ood_difficulty.pdf}
 \caption{\rev{\textbf{Viyog is a complementary \emph{panel}, not a single
 statistic: paired early-layer reads separate ADV from every OOD difficulty.}
@@ -871,10 +915,10 @@ throughout---the separable signal is first-conv \emph{shape}, not magnitude.}}
 \end{figure}
 
 \subsection{Computational Efficiency}
-\rev{\linelabel{LL:secVIC}Having shown the first-conv read is the most \emph{accurate} detector, we
+\rev{Having shown the first-conv read is the most \emph{accurate} detector, we
 now show it is also the \emph{cheapest}.}
 
-\begin{figure*}[t]
+\begin{figure*}[tb]
   \centering
   \includegraphics[width=0.82\textwidth]{figs/rebuttal/fig_baselines_cost.pdf}
   \caption{\rev{\textbf{Measured second-stage detection cost versus every
@@ -900,7 +944,7 @@ forward pass, runs $6$--$347\times$ faster than all baselines (H200, CUDA events
 and draws $3.8\%$ of inference latency and $12\%$ of energy --- the best-separating
 detector is also the cheapest by orders of magnitude.
 
-\begin{table}[t]\centering\footnotesize
+\begin{table}[tb]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \caption{\rev{Second-stage detector cost
 (architecture-derived). State is $O(C)$ for the first-layer detectors versus
@@ -924,7 +968,7 @@ KNN & 20--40\,MB & 1 & $O(ND)$\\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]\centering
+\begin{figure}[tb]\centering
 \includegraphics[width=\columnwidth]{figs/rebuttal/fig_onsilicon.pdf}
 \caption{\rev{\textbf{Measured on-silicon detector cost and edge projection
 (closes the on-device request).} \textbf{(a)}~Per-architecture cost of the
@@ -973,7 +1017,7 @@ standard attacks suppress first-layer norms without special treatment.
 
 \subsection{Results and Security Implications}
 
-\rev{\linelabel{LL:secVIIB}The ladder of Fig.~\ref{fig:adaptive_ladder} measures what each rung of
+\rev{The ladder of Fig.~\ref{fig:adaptive_ladder} measures what each rung of
 attacker knowledge costs---from black-box PGD (A0) through a both-aware adaptive
 adversary (A3) to a stochastic-band defence (EOT).}
 
@@ -1087,7 +1131,7 @@ training.
 
 \subsection{End-to-End Cascade and False-Positive Propagation}
 \label{ssec:e2e}
-\rev{\linelabel{LL:secIXA}We evaluate the full two-stage pipeline (non-ID gate $\to$ Viyog)} over 17
+\rev{We evaluate the full two-stage pipeline (non-ID gate $\to$ Viyog)} over 17
 architectures $\times$ 10 seeds at a matched $5\%$ ID-FPR
 (Table~\ref{tab:e2e}, Fig.~\ref{fig:cascade_e2e}).
 
@@ -1114,7 +1158,7 @@ class only $\mathbf{5.2\%}$ of the time (median $0$; exactly $0$ on $14/17$
 architectures) versus $51$--$82\%$ for logit/$L_\infty$---mitigating rather than
 amplifying upstream errors.
 
-\begin{table}[t]\centering\footnotesize
+\begin{table}[tb]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \caption{\rev{End-to-end two-stage recall at a matched
 $5\%$ ID false-positive rate (mean over 17 archs $\times$ 10 seeds). A two-signal
@@ -1164,7 +1208,7 @@ Shape holds at $0.95$--$1.00$ while the raw norm stays near chance.}}
 \end{figure}
 \subsection{Limitations and Future Work}
 \label{ssec:limitations}
-\rev{\linelabel{LL:secIXB}While Viyog addresses the core OOD-vs-ADV separation problem, six boundary
+\rev{While Viyog addresses the core OOD-vs-ADV separation problem, six boundary
 conditions remain. Three are \textbf{resolved} in this revision (multi-seed
 reproducibility, non-vision generality, and adaptive robustness); two are
 \textbf{open} by design scope (physical attacks attenuated by the camera ISP,
@@ -1172,7 +1216,7 @@ and on-board edge measurements); and one is a \textbf{benign} artefact
 (DenseNet-121 dead-channel degeneracy on MNIST, fixed by active-channel
 selection). Table~\ref{tab:limits} summarises each item with its current status.}
 
-\begin{table}[t]\centering\footnotesize
+\begin{table}[tb]\centering\footnotesize
 \caption{\rev{\textbf{Limitations and status.} Camera-ready items are committed;
 addressed items are validated in the cited figures/sections.}}
 \label{tab:limits}
@@ -1213,11 +1257,16 @@ $\approx0.3$\,KB of added state. Viyog adds no parameters, requires no
 retraining, and runs in a single forward pass, making it immediately deployable
 as a plug-in second stage for safety-critical embedded AI.}
 
-\FloatBarrier
+% Camera-ready page-limit fix (2/2): the \FloatBarrier that used to sit here
+% flushed every pending float before the appendix, which forced a page break
+% mid-column and left ~2.8in of the preceding page blank. With all floats now
+% allowed bottom placement, they settle next to their references on their own
+% (verified: figures still appear in strict numerical order, Fig.1 p.1 through
+% Fig.18 p.13), so the barrier costs a page without buying anything.
 \appendices
 \section{General-Affine Suppression Bound, GELU Error, and Proof of Proposition~1}
 \label{app:affine}
-\linelabel{LL:appA}The first-layer perturbation bound (Eq.~\eqref{eq:affinebound}) uses only that the first layer is
+The first-layer perturbation bound (Eq.~\eqref{eq:affinebound}) uses only that the first layer is
 \emph{affine}. For any first-layer Jacobian $W$ (dense layer, strided
 convolution, or ViT/Swin patch embedding) and perturbation $\|\delta\|_\infty
 \le\varepsilon$,
