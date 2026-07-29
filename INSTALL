@@ -83,13 +83,23 @@ writes `results/analysis/full_eval_cifar100_summary.csv`. Check the
 `ViyogD_tv_dorm` row in the "T2: ID-vs-ADV" table against README's
 "Expected headline numbers" table:
 
-    T2 mean_dl ~ 0.94   T3 mean_dl ~ 0.78   (this 6-model core tier's own numbers --
-    NOT the paper's 0.966/0.824 headline, which averages the full 20-arch panel; see
-    README's "Reproducing the paper" section for why these differ and why that's expected)
+    T2 mean_dl ~ 0.98   T3 mean_dl ~ 0.84   (this 6-model core tier, run with the
+    four attacks used in the steps above -- NOT the paper's 0.966/0.824 headline,
+    which averages the full 20-arch panel; see README's "Reproducing the paper"
+    section for why these differ and why that's expected)
 
-(Small deviations from seed/hardware nondeterminism are expected -- e.g. this
-exact run measured 0.940/0.777; large deviations, e.g. off by more than a
-few hundredths of AUROC, indicate a setup problem worth reporting.)
+A clean-clone run of exactly these steps on a single H200 (2026-07-29) measured
+0.9804 / 0.8441 in 4 h 7 m. Small deviations from seed/hardware nondeterminism
+are expected; large deviations -- off by more than a few hundredths of AUROC --
+indicate a setup problem worth reporting.
+
+Note if you compare against the committed CSVs in `results/analysis/`: those
+were generated over the full SIX-attack suite (the four above plus `deepfool`
+and `cw`) and read 0.940 / 0.777. DeepFool and CW are minimal-perturbation
+attacks and are much harder to detect (T2 ~0.70-0.78 on their own), so
+including them lowers the mean. Both numbers are correct for their respective
+attack sets -- README's "Reproducing the paper" section has the per-attack
+breakdown.
 
     uv run python experiments/exp_master_table.py --dataset cifar100
 

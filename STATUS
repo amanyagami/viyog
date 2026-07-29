@@ -58,29 +58,45 @@ Concretely, Tier T1 in README/INSTALL:
      verified line-for-line against `experiments/06b_extract_full.py`'s
      reference extractor,
   6. and reproduces this 6-model core tier's own numbers (`ViyogD_tv_dorm`:
-     T2 AUROC ~0.94, T3 AUROC ~0.78, 0.28 KB detector state) -- lower than
-     the paper's headline 0.966/0.824 because that headline averages over
-     the full 20-architecture panel (Tier T2) and this 6-model subset
-     includes ViT-base, a notably weaker performer on T2/T3 that pulls the
-     6-model mean down. This is not measurement noise: it matches the
-     pre-existing 3-seed check (`results/analysis/multiseed_viyogd.csv`,
-     same 6 models, T2 = 0.936-0.940 / T3 = 0.768-0.782 across seeds) to
-     within a few thousandths. Reproducing the exact 0.966/0.824 headline
-     requires the full 20-architecture Tier-T2 sweep.
+     T2 AUROC ~0.98, T3 AUROC ~0.84, 0.28 KB detector state), measured
+     0.9804/0.8441 on a clean-clone run of the documented commands.
+
+     Two comparisons a reviewer should expect, both documented in README:
+
+     (a) The committed CSVs in `results/analysis/` read 0.940/0.777 rather
+         than 0.9804/0.8441. They were generated over the full SIX-attack
+         suite (adding DeepFool and CW) whereas the documented reproduce
+         command runs four (FGSM, BIM, PGD, APGD-CE). DeepFool and CW are
+         minimal-perturbation attacks -- they stop at the decision boundary,
+         leaving far less first-layer residue -- and score only T2 0.78/0.70
+         on their own, which is what lowers the six-attack mean. The
+         four-attack mean of the per-attack table (0.98035) matches the
+         fresh run to within 0.0001. Both numbers are correct for their
+         respective attack sets; README carries the full per-attack
+         breakdown so the difference is checkable, not surprising.
+
+     (b) Neither is the paper's headline 0.966/0.824, which averages the
+         full 20-architecture panel (Tier T2). Reproducing that exactly
+         requires the full Tier-T2 sweep.
 
 This was executed end-to-end during artifact preparation on a single CUDA
 GPU (an H200); see REQUIREMENTS for what hardware a reviewer needs and
 INSTALL for the exact commands and expected outputs. Real measured
 wall-clock on a genuine from-scratch fresh-clone run (git clone into an
 empty directory, nothing cached anywhere): adversarial generation for all
-6 models x 4 attacks = **2h 5min** (APGD-CE's 100 gradient steps/batch on
+6 models x 4 attacks = **2h 6min** (APGD-CE's 100 gradient steps/batch on
 the slower architectures is the long pole); first-conv feature extraction
-= **1h 57min** (dominated by first-time OOD dataset downloads over a
-throttled connection, not compute); signature recomputation and the final
-comparison table are each under two minutes. **Budget 4+ hours total for
+= **2h 0min** (dominated by first-time OOD dataset downloads over a
+throttled connection, not compute); signature recomputation (5s),
+`full_eval` (11s), the master comparison table (<1s) and `make demo-data`
+(1s) are all effectively instant. Total **4h 7min**. **Budget 4+ hours for
 an honest first run.** A second run against the same clone is far faster,
 since generated files aren't regenerated and downloaded datasets aren't
 re-downloaded.
+
+These are not estimates: they are the step timings printed by the
+2026-07-29 clean-clone run (7588s / 7197s / 5s / 11s / 0s / 1s;
+14802s total), which completed every documented step without error.
 
 Two earlier drafts of this file understated these numbers, both caught by
 actually re-running the documented commands against a fresh clone rather

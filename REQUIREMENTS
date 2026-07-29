@@ -64,17 +64,19 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   brand-new `git clone` into an empty directory (one H200, GPU otherwise
   idle, following INSTALL verbatim with no shortcuts):
     - `01_download.py --core-only`: a few minutes (network-bound, ~250 MB).
-    - `03_gen_adversarial.py` (6 models x 4 attacks): **2h 5min**. Real GPU
-      compute, not network -- APGD-CE alone is 100 gradient steps per batch
-      per model on the full 10k-image test set. ViT-B is the long pole at
-      ~28 min on its own; small/fast models like MobileNetV3 finish in a
-      couple of minutes.
+    - `03_gen_adversarial.py` (6 models x 4 attacks): **2h 6min** (7588s).
+      Real GPU compute, not network -- APGD-CE alone is 100 gradient steps
+      per batch per model on the full 10k-image test set. ViT-B is the long
+      pole at ~28 min on its own; small/fast models like MobileNetV3 finish
+      in a couple of minutes.
     - `06b_extract_full.py` (ID + 10 OOD + 4 ADV splits x 6 models):
-      **1h 57min**. Dominated by first-time OOD dataset downloads over a
-      throttled connection, not compute.
-    - `09_signatures_full.py` + `full_eval.py` + `exp_master_table.py`:
-      each well under two minutes; CPU-bound post-processing over the
-      already-extracted features, not sensitive to caching.
+      **2h 0min** (7197s). Dominated by first-time OOD dataset downloads
+      over a throttled connection, not compute.
+    - `09_signatures_full.py` (5s) + `full_eval.py` (11s) +
+      `exp_master_table.py` (<1s) + `make demo-data` (1s): effectively
+      instant; CPU-bound post-processing over the already-extracted
+      features, not sensitive to caching.
+    - Total: **4h 7min** (14802s).
   Two earlier drafts of this file understated these numbers -- first at
   "22 seconds" for the generation step (that was a re-run timing a
   skip-existing-file check, not real generation), then at "~44 minutes"
