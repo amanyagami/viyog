@@ -116,7 +116,7 @@ def firstconv_macs(
     return macs, (oh, ow)
 
 
-def detector_states(C: int, D: int, K: int, N: int, band_pct: float = 5.0) -> dict[str, int]:
+def detector_states(C: int, D: int, K: int, N: int, band_pct: float = config.NEURON_LOW_PCT * 100) -> dict[str, int]:
     """State memory in bytes for each detector, given the architecture dims."""
     band_k = max(1, math.ceil(band_pct / 100.0 * C))
     return {

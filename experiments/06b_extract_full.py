@@ -52,7 +52,7 @@ from data_utils import (
 from model_utils import FirstLayerHook, find_first_conv_in_normalized, load_normalized_model
 from tqdm import tqdm
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 _EPS = 1e-8
 
 
@@ -87,6 +87,18 @@ def _parse_args() -> argparse.Namespace:
                    help="Delete each adversarial source h5 once its signatures are "
                         "extracted (the raw images are consumed) — bounds disk use for "
                         "multi-dataset runs. The compact featfull file is what's kept.")
+    p.add_argument("--batch", type=int, default=None,
+                   help="Override the per-model feature batch size (default: "
+                        "config.MODEL_FEATURE_BATCH, tuned for large-VRAM GPUs). "
+                        "Lower this on a smaller card, e.g. --batch 128 for 8-16 GB. "
+                        "Correctness is unaffected; only throughput changes.")
+    p.add_argument("--ood", nargs="+", default=None, choices=list(config.OOD_DATASETS),
+                   metavar="OOD",
+                   help="Restrict the OOD universe (default: all 10). First-run "
+                        "OOD downloads dominate this step's wall-clock, so a subset "
+                        "such as '--ood cifar10 svhn' gives a fast end-to-end check. "
+                        "NOTE: T3 (OOD-vs-ADV) is then averaged over only those sets "
+                        "and is NOT comparable to the paper's 10-set T3.")
     return p.parse_args()
 
 
@@ -232,8 +244,10 @@ def extract(norm_model, loader, out_path: Path, n_total: int, n_filters: int,
 
 
 def process_model(model_name: str, arch: str, weight_path, attacks: list[str],
-                  dataset: str, cleanup_adv: bool = False) -> None:
-    feat_batch = MODEL_FEATURE_BATCH[model_name]
+                  dataset: str, cleanup_adv: bool = False,
+                  batch_override: int | None = None,
+                  ood_subset: list[str] | None = None) -> None:
+    feat_batch = batch_override if batch_override is not None else MODEL_FEATURE_BATCH[model_name]
     n_classes = config.NUM_CLASSES
     norm_model = load_normalized_model(arch, weight_path, num_classes=n_classes, device=DEVICE)
     _, layer = find_first_conv_in_normalized(norm_model)
@@ -248,15 +262,40 @@ def process_model(model_name: str, arch: str, weight_path, attacks: list[str],
             f"{model_name}/id")
 
     # OOD (10-set universe minus self)
-    for ood in config.OOD_DATASETS:
+    #
+    # A failed OOD split silently shrinks the universe T3 (OOD-vs-ADV) averages
+    # over, so the reported number would no longer mean what the paper's means.
+    # Only *environmental* failures (an unreachable dataset mirror -- GTSRB's
+    # has intermittent outages) are survivable: warn, keep going, and report the
+    # shortfall loudly at the end. Anything else -- above all a CUDA OOM, the
+    # likely failure on a smaller or shared GPU -- is a configuration problem
+    # that must stop the run rather than quietly degrade the result.
+    failed_ood: list[str] = []
+    for ood in (ood_subset if ood_subset is not None else config.OOD_DATASETS):
         try:
             ol = get_ood_loader(ood, batch_size=feat_batch, num_workers=4,
                                 max_samples=N_FEATURE_SAMPLES)
             extract(norm_model, ol, fdir / f"featfull_{model_name}_ood_{ood}.h5",
                     min(N_FEATURE_SAMPLES, len(ol.dataset)), n_filters, n_classes,
                     f"{model_name}/ood-{ood}")
-        except Exception as e:  # noqa: BLE001
-            print(f"  [warn] OOD {ood} failed: {e}")
+        except torch.cuda.OutOfMemoryError:
+            print(f"\n  [FATAL] CUDA out of memory on OOD split '{ood}' "
+                  f"(feature batch = {feat_batch}).")
+            print( "          Re-run with a smaller batch, e.g.  --batch 64")
+            print( "          (or use reproduce_t1.sh, which sizes the batch to your GPU).")
+            raise
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except (OSError, RuntimeError, ValueError) as e:
+            # Download/mirror/decode failures: survivable, but never silent.
+            print(f"  [warn] OOD {ood} failed ({type(e).__name__}): {e}")
+            failed_ood.append(ood)
+
+    if failed_ood:
+        print(f"\n  [!] {len(failed_ood)} OOD split(s) missing: {', '.join(failed_ood)}")
+        print( "      T2 (ID-vs-ADV) is unaffected. T3 (OOD-vs-ADV) will be averaged")
+        print( "      over fewer OOD sets than the paper and is NOT directly comparable.")
+        print( "      Re-run this script to retry only the missing splits.")
 
     # ADV
     for atk in attacks:
@@ -290,11 +329,16 @@ def main() -> None:
     config.set_dataset(args.dataset)
     print(f"=== Step 6b: rich one-pass feature extraction [{args.dataset}] ===")
     print(f"  models: {args.models}  attacks: {args.attacks}")
-    print(f"  OOD ({len(config.OOD_DATASETS)}): {list(config.OOD_DATASETS)}")
+    _ood = args.ood if args.ood is not None else list(config.OOD_DATASETS)
+    print(f"  OOD ({len(_ood)}): {_ood}")
+    if args.ood is not None:
+        print("  [!] OOD universe restricted -- T3 is NOT comparable to the paper's 10-set T3.")
     print(f"  output: {config.FEATURES_DIR}")
     for m in args.models:
         arch, wp = config.MODELS[m]
-        process_model(m, arch, wp, args.attacks, args.dataset, cleanup_adv=args.cleanup_adv)
+        process_model(m, arch, wp, args.attacks, args.dataset,
+                      cleanup_adv=args.cleanup_adv, batch_override=args.batch,
+                      ood_subset=args.ood)
     files = sorted(config.FEATURES_DIR.glob("featfull_*.h5"))
     print(f"\n  {len(files)} rich feature files in {config.FEATURES_DIR}")
     print("=== Step 6b complete ===")

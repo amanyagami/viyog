@@ -32,13 +32,23 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   embedded hardware (e.g. specific microcontrollers) -- any current consumer
   or cloud CUDA GPU (a free Colab GPU, a university cluster node, a rented
   cloud instance) satisfies this.
-- VRAM: the default per-model batch sizes in `experiments/config.py`
-  (`MODEL_ATTACK_BATCH`, `MODEL_FEATURE_BATCH`) were tuned for large-VRAM GPUs
-  (the paper's own hardware). The largest of the 6 core models
-  (convnextv2_base) needs roughly 45 GB VRAM at its default attack batch
-  (192). **On a smaller GPU, pass `--batch N` to `03_gen_adversarial.py`** to
-  scale the batch down (e.g. `--batch 16` fits comfortably on an 8-16 GB
-  card) -- runtime scales up proportionally, correctness is unaffected.
+- VRAM: **any size.** The default per-model batch sizes in
+  `experiments/config.py` (`MODEL_ATTACK_BATCH`, `MODEL_FEATURE_BATCH`) were
+  tuned for the paper's own hardware (a 143 GB H200) -- the largest core model
+  (convnextv2_base) needs roughly 45 GB at its default attack batch of 192.
+  **You do not need to match that.** The simplest path is
+
+      bash reproduce_t1.sh
+
+  which reads your GPU's VRAM and scales both GPU-heavy stages for you
+  (profiles defined from 8 GB upward). If you drive the steps by hand, both
+  stages take a `--batch` override:
+
+      uv run python experiments/03_gen_adversarial.py ... --batch 16
+      uv run python experiments/06b_extract_full.py   ... --batch 128
+
+  Runtime scales up proportionally; results are unaffected -- batch size
+  changes throughput only, never the computed statistics.
 - Software: `uv sync --group experiments` (adds torchattacks, timm,
   pytorch-ood, h5py, pandas, fvcore, huggingface-hub, etc. -- see
   `[dependency-groups.experiments]` in pyproject.toml for the full pinned

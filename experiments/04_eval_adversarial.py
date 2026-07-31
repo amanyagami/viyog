@@ -25,7 +25,7 @@ from config import ADV_DIR, ANALYSIS_DIR, ATTACKS, DEVICE, EVAL_BATCH, MODELS, N
 from data_utils import adv_loader_from_h5
 from model_utils import load_normalized_model
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 def _parse_args() -> argparse.Namespace:

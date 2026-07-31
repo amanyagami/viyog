@@ -143,7 +143,28 @@ and [STATUS](STATUS) for the full detail; the summary:
 | **T2 — extended** | Same pipeline, all 20 architectures + cifar10 | 1 CUDA GPU, longer | extra evidence |
 | **T3 — from scratch** | Re-finetune all 20 backbones from raw ImageNet weights | GPU-weeks | documented, out of scope |
 
-T1 in brief (see INSTALL for the full walkthrough):
+**Reviewers: one command reproduces Tier T1 end to end.**
+
+```bash
+bash reproduce_t1.sh --quick    # smoke test — does the pipeline work here?
+bash reproduce_t1.sh            # full Tier T1 — reproduce the paper
+```
+
+`reproduce_t1.sh` preflights your machine (GPU, VRAM, disk), **scales both GPU
+batch sizes to your card** (the committed defaults are sized for a 143 GB H200;
+profiles defined from 8 GB upward), runs the whole pipeline, verifies that
+every expected feature split was produced, and prints the measured T2/T3 AUROC
+beside the values claimed below. `--quick` runs the same pipeline on one backbone
+/ one attack / two OOD sets so you can confirm the artifact works before
+committing hours to it.
+
+Both tiers are dominated by **first-run dataset downloads**, not compute:
+`--quick` is ~2 minutes of GPU work but fetches ~350 MB of benchmark data the
+first time (30-60 min on a throttled link; minutes once cached). The full tier
+measured 4 h 7 m end to end on a clean clone with nothing cached.
+
+The individual steps below remain available if you would rather drive them
+yourself (see INSTALL for the full walkthrough):
 
 ```bash
 uv sync --group experiments
@@ -168,8 +189,21 @@ as produced by the exact commands above:
 | --- | --- |
 | T2 (ID-vs-ADV) AUROC | **~0.98** (measured: 0.9804) |
 | T3 (OOD-vs-ADV) AUROC | **~0.84** (measured: 0.8441) |
-| Detector state | 0.28 KB |
-| Compute vs. a full forward | 2.284% (fvcore-verified; see `eval_systems.py`) |
+
+The paper's two efficiency headlines — **~0.3 KB** of detector state and
+**2.284%** of a full forward pass — are *not* produced by the commands above.
+They are architecture-only measurements over the paper's panel and need no GPU,
+no weights and no dataset, so reproduce them separately in seconds:
+
+```bash
+uv run python experiments/eval_detector_cost.py   # state memory, per model
+uv run python experiments/eval_systems.py         # fvcore MAC ratios
+```
+
+State scales linearly with the first conv's output-channel count, so read the
+per-model rows rather than only the mean if you are comparing against one
+architecture: the small edge backbones sit well under 0.3 KB, while `vit_base`
+(C=768) is several times that.
 
 Verified end to end from a clean `git clone` on a single H200 (2026-07-29),
 running exactly the commands above: **4 h 7 m** wall-clock.

@@ -25,7 +25,7 @@ from config import ANALYSIS_DIR, DEVICE, EVAL_BATCH, MODELS, NUM_CLASSES
 from data_utils import get_id_loader
 from model_utils import load_normalized_model
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 def _parse_args() -> argparse.Namespace:

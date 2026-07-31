@@ -32,8 +32,8 @@ import pandas as pd
 #   edge_latency.csv (3.5% CPU), accelerator_energy.csv (5.1% energy).
 COST = {
     # method:        (state_mem_KB, compute_%fwd, cpu_lat_%fwd, accel_energy_%fwd)
-    "ViyogD_tv_dorm": (0.28, 2.284, 3.5, 5.1),
-    "ViyogD_hf_dorm": (0.28, 2.284, 3.5, 5.1),
+    "ViyogD_tv_dorm": (0.30, 2.284, 3.5, 5.1),
+    "ViyogD_hf_dorm": (0.30, 2.284, 3.5, 5.1),
     "Viyog_Linf":     (0.01, 2.284, 3.5, 5.1),
     "Energy":         (0.004, 100., 100., 100.),
     "Entropy":        (0.004, 100., 100., 100.),

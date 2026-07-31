@@ -528,8 +528,20 @@ def accepted_models(dataset: str, models: list[str] | None = None) -> tuple[list
     floor = ACC_FLOOR.get(dataset, 0.0)
     accs = {}
     p = dataset_dirs(dataset)["analysis"] / "clean_accuracy.json"
-    if p.exists():
-        accs = json.loads(p.read_text())
+    if not p.exists():
+        # The gate exists to keep under-trained backbones out of the paper's
+        # panel, and it reads accuracies written by 02_eval_clean.py -- which is
+        # NOT part of the documented T1 reproduction path. Without this branch a
+        # reviewer following INSTALL gets an empty `accepted` list, so the
+        # signature battery analyses nothing and writes none of the per-model
+        # CSVs INSTALL says to expect, while still exiting 0. Accept what was
+        # asked for and say plainly that the gate was skipped.
+        print(f"[gate] {p.name} not found -- clean-accuracy gate skipped; "
+              f"analysing all {len(models)} requested model(s).")
+        print( "       (Run experiments/02_eval_clean.py first if you want the "
+               "gate applied.)")
+        return list(models), []
+    accs = json.loads(p.read_text())
     accepted, dropped = [], []
     for m in models:
         a = accs.get(m, {}).get("top1")

@@ -47,7 +47,7 @@ from config import (
 from data_utils import AdvH5Writer, get_id_loader
 from model_utils import load_normalized_model
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 _IMAGE_SHAPE = (3, 224, 224)
 

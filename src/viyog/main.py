@@ -41,6 +41,8 @@ extra with ``pip install viyog[metrics]``.
 
 from __future__ import annotations
 
+import threading
+import weakref
 from collections.abc import Sequence
 from typing import Any
 
@@ -111,14 +113,28 @@ class Viyog:
 
         self._hook_handle: torch.utils.hooks.RemovableHandle | None = None
         self._features: dict[str, torch.Tensor] = {}
+        # Guards the capture-forward-read sequence in _forward_features: the hook
+        # writes into shared instance state, so two threads calling score() on the
+        # same detector could otherwise read each other's activations.
+        self._lock = threading.Lock()
 
         name, mod = self._resolve_layer(model, layer)
         if mod is None:
             raise RuntimeError("No convolutional layer found to attach hook to.")
         self.layer_name_ = name
+        self._is_conv1d = isinstance(mod, torch.nn.Conv1d)
+
+        # The hook closes over a *weak* reference, not self. A strong reference
+        # would form a cycle (model -> _forward_hooks -> closure -> self), and
+        # because the caller owns the model, a Viyog dropped without close()
+        # would survive until the next cyclic-GC pass, leaving a live hook doing
+        # real work on every forward.
+        self_ref = weakref.ref(self)
 
         def hook_fn(module: Any, inputs: Any, output: Any) -> None:
-            self._features["first"] = output.detach()
+            inst = self_ref()
+            if inst is not None:
+                inst._features["first"] = output.detach()
 
         self._hook_handle = mod.register_forward_hook(hook_fn)
 
@@ -171,16 +187,23 @@ class Viyog:
         return self.device
 
     def _forward_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Run one forward pass and return the hooked first-layer activation."""
-        self._features.pop("first", None)
-        with torch.no_grad():
-            self.model(x)
-        if "first" not in self._features:
+        """Run one forward pass and return the hooked first-layer activation.
+
+        The clear-forward-read sequence is serialised: the hook deposits the
+        activation in shared instance state, so concurrent calls on one detector
+        would otherwise be able to read each other's batch.
+        """
+        with self._lock:
+            self._features.pop("first", None)
+            with torch.no_grad():
+                self.model(x)
+            feats = self._features.pop("first", None)
+        if feats is None:
             raise RuntimeError("Hook captured no features; check the model forward path.")
-        return self._features["first"]
+        return feats
 
     @staticmethod
-    def _mean_and_tv(feats: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _mean_and_tv(feats: torch.Tensor, is_conv1d: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
         """Per-channel mean |activation| and magnitude-normalised total variation.
 
         Accepts ``(B, C, H, W)`` conv maps (2-D total variation over H and W) or
@@ -191,6 +214,11 @@ class Viyog:
             difference between neighbouring positions, divided by ``fmean`` so it
             measures *shape* (roughness), not magnitude.
         """
+        if feats.dim() == 3 and not is_conv1d:
+            # Unbatched Conv2d output (C, H, W) -- PyTorch allows unbatched conv
+            # input/output; a Conv2d hook can never legitimately produce a real
+            # (B, C, L) 1-D-conv batch, so this is unambiguous.
+            feats = feats.unsqueeze(0)
         if feats.dim() == 4:
             absa = feats.abs()
             fmean = absa.mean(dim=(2, 3))
@@ -252,7 +280,7 @@ class Viyog:
         for batch in id_loader:
             x = self._batch_x(batch).to(device)
             feats = self._forward_features(x)
-            fmean, tv = self._mean_and_tv(feats)
+            fmean, tv = self._mean_and_tv(feats, self._is_conv1d)
             if sum_fmean is None:
                 sum_fmean = fmean.sum(dim=0).double()
                 sum_tv = tv.sum(dim=0).double()
@@ -315,7 +343,7 @@ class Viyog:
 
         if isinstance(x, torch.Tensor):
             feats = self._forward_features(x.to(device))
-            _, tv = self._mean_and_tv(feats)
+            _, tv = self._mean_and_tv(feats, self._is_conv1d)
             dorm = self.dorm_idx_.to(tv.device)
             v = tv.index_select(1, dorm).mean(dim=1)
             if center and self.id_score_mean_ is not None:

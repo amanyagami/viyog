@@ -53,7 +53,7 @@ from data_utils import load_feature_h5
 matplotlib.use("Agg")  # headless
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 # ---------------------------------------------------------------------------

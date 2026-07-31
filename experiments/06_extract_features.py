@@ -55,7 +55,7 @@ from data_utils import (
 from model_utils import FirstLayerHook, find_first_conv_in_normalized, load_normalized_model
 from tqdm import tqdm
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 def _parse_args() -> argparse.Namespace:

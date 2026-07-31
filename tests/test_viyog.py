@@ -1,5 +1,9 @@
 """Tests for the dormant-band roughness detector (paper method)."""
 
+import gc
+import threading
+import weakref
+
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -139,3 +143,106 @@ def test_center_shifts_but_preserves_order() -> None:
         raw = v.score(x)
         cen = v.score(x, center=True)
     assert torch.allclose(raw - v.id_score_mean_, cen, atol=1e-5)
+
+
+class _HeadlessConvNet(torch.nn.Module):
+    """No classification head, so its forward is unbatched-safe end to end --
+    isolates Viyog's own batching logic from an unrelated Linear-head shape
+    mismatch on unbatched input (which is a property of the wrapped model,
+    not of Viyog)."""
+
+    def __init__(self, in_ch: int = 3, out_ch: int = 8) -> None:
+        super().__init__()
+        self.conv1 = torch.nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.relu(self.conv1(x))
+
+
+def test_unbatched_input_matches_batch_of_one() -> None:
+    """A single (C, H, W) image -- no batch dim -- must score identically to
+    the same image with an explicit batch dim of 1, not be silently
+    misread as a (B, C, L) 1-D-signal batch (regression: a Conv2d hook's
+    unbatched 3-D output was previously misdispatched to the Conv1d branch,
+    returning a plausible but meaningless score with no error)."""
+    torch.manual_seed(0)
+    x = _smooth_images(16)
+    with Viyog(_HeadlessConvNet(), device="cpu") as v:
+        v.fit(_loader(x))
+        image = x[0]
+        assert image.dim() == 3  # (C, H, W), genuinely unbatched
+        unbatched = v.score(image)
+        batched = v.score(image.unsqueeze(0))
+    assert unbatched.shape == batched.shape == (1,)
+    assert torch.allclose(unbatched, batched, atol=1e-6)
+
+
+def test_conv1d_batch_still_uses_1d_branch() -> None:
+    """A genuine (B, C, L) Conv1d batch must not be affected by the unbatched-
+    Conv2d disambiguation above -- same dim() as an unbatched Conv2d map, but
+    a different, legitimate meaning."""
+
+    class _Sig(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conv1 = torch.nn.Conv1d(1, 6, 5, padding=2)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return torch.relu(self.conv1(x))
+
+    torch.manual_seed(0)
+    x = torch.randn(5, 1, 32)
+    with Viyog(_Sig(), device="cpu", dorm_pct=0.5) as v:
+        v.fit(_loader(x))
+        scores = v.score(x)
+    assert scores.shape == (5,)  # one score per signal in the batch, not per-length
+
+
+def test_instance_freed_without_close() -> None:
+    """The forward hook must hold a weak reference to the detector: a strong
+    reference would create model -> hooks -> closure -> self cycle, so a
+    Viyog dropped without close()/context-manager would survive until the
+    next cyclic-GC pass instead of being freed immediately (regression)."""
+    torch.manual_seed(0)
+    model = _HeadlessConvNet()
+    gc.disable()
+    try:
+        v = Viyog(model, device="cpu")
+        v.fit(_loader(_smooth_images(16)))
+        ref = weakref.ref(v)
+        del v
+        assert ref() is None, "instance survived del -- hook holds a strong reference"
+        assert len(model._forward_hooks) == 0, "hook was not removed with the instance"
+        model(_smooth_images(2))  # must not raise with the referent gone
+    finally:
+        gc.enable()
+
+
+def test_concurrent_score_is_thread_safe() -> None:
+    """Two threads calling score() on the SAME detector instance must not
+    observe each other's activations (regression: the hook wrote into shared
+    instance state with no locking around the capture-forward-read
+    sequence)."""
+    torch.manual_seed(0)
+    with Viyog(_HeadlessConvNet(), device="cpu") as v:
+        v.fit(_loader(_smooth_images(16)))
+        a = torch.zeros(6, 3, 16, 16)
+        b = torch.ones(6, 3, 16, 16) * 0.7
+        ref_a, ref_b = v.score(a), v.score(b)  # serial ground truth
+
+        out: dict[str, torch.Tensor] = {}
+
+        def run(key: str, x: torch.Tensor) -> None:
+            out[key] = v.score(x)
+
+        pairs = [("a", a), ("b", b)] * 8
+        threads = [threading.Thread(target=run, args=(f"{k}{i}", x))
+                   for i, (k, x) in enumerate(pairs)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    for key, result in out.items():
+        ref = ref_a if key.startswith("a") else ref_b
+        assert torch.allclose(result, ref, atol=1e-6), f"{key} diverged from serial reference"

@@ -21,7 +21,7 @@ Tier T0 -- install & sanity check (CPU, ~2 minutes)
 -------------------------------------------------------
     uv run pytest tests/ -q
 
-Expected: `12 passed`.
+Expected: `16 passed`.
 
     uv run python examples/quickstart.py --smoke
 
@@ -39,6 +39,11 @@ end-to-end and its statistic behaves as documented (higher V(x) for ADV).
 
 Tier T1 -- core recompute (GPU, the Reproducible-badge claim)
 ------------------------------------------------------------------
+**Recommended: `bash reproduce_t1.sh`** (or `--quick` for a ~few-minute
+validation pass first). It runs every step below, sizes both GPU stages to
+your card's *free* VRAM automatically, and verifies coverage at each stage.
+The manual walkthrough below is for driving the steps individually.
+
     uv sync --group experiments
 
 Expected: adds torchattacks, timm, pytorch-ood, h5py, pandas, fvcore, and the
@@ -63,6 +68,11 @@ CIFAR-100 downloads automatically on first run if not already present.
     uv run python experiments/06b_extract_full.py \
         --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
         --attacks fgsm bim pgd apgd_ce
+
+On a GPU smaller than the paper's (143 GB): add `--batch N` (e.g. `--batch
+128` for 8-16 GB) -- this step's default batches (1024-4096) assume the
+paper's hardware and will otherwise CUDA-OOM. Runtime scales up
+proportionally; results are unaffected. `reproduce_t1.sh` does this for you.
 
 Expected: writes `results/features/featfull_<model>_<split>.h5` for the ID,
 10 OOD, and 4 ADV splits of each of the 6 models. The 10 OOD benchmark

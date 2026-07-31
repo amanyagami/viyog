@@ -25,7 +25,7 @@ specific command in README/INSTALL.
 Reviewed
 --------
 The artifact runs and produces the outputs it describes:
-  - `pytest tests/` passes (12/12) against the installed package.
+  - `pytest tests/` passes (16/16) against the installed package.
   - `examples/quickstart.py --smoke` runs the packaged `Viyog` detector
     end-to-end on synthetic data and prints the three separation AUROCs the
     README documents.
@@ -58,7 +58,7 @@ Concretely, Tier T1 in README/INSTALL:
      verified line-for-line against `experiments/06b_extract_full.py`'s
      reference extractor,
   6. and reproduces this 6-model core tier's own numbers (`ViyogD_tv_dorm`:
-     T2 AUROC ~0.98, T3 AUROC ~0.84, 0.28 KB detector state), measured
+     T2 AUROC ~0.98, T3 AUROC ~0.84, ~0.3 KB detector state), measured
      0.9804/0.8441 on a clean-clone run of the documented commands.
 
      Two comparisons a reviewer should expect, both documented in README:
@@ -137,3 +137,43 @@ direction of the original error was conservative -- it understated Viyog's
 efficiency advantage on those four architectures, not the reverse -- and it
 does not affect any detection-accuracy number (T1/T2/T3 AUROC, state
 memory) reported elsewhere in the paper or this artifact.
+
+Second disclosed limitation: in-sample dormant-band selection
+-------------------------------------------------------------------
+The reproduction pipeline selects the dormant channel band and the ID
+reference statistics from the same ID split it then scores as the
+negative class (`09_signatures_full.py`, `08_signatures.py` both load a
+single `*_id.h5` -- the CIFAR-100 test split -- compute the per-channel
+ranking from it, and reuse that same array as the ID population in the
+reported AUROCs). There is no held-out calibration split in that path.
+
+Three things bound what this can and cannot do to the reported numbers,
+and we state them precisely rather than asserting the effect is zero:
+
+  - The band selection is *unsupervised with respect to the decision
+    being measured*. It ranks channels by mean ID activation only; it
+    never sees an adversarial or OOD sample, and never sees a label.
+    This is not test-label leakage -- it is unsupervised feature
+    selection performed on a population that is later scored.
+  - The ID-mean centering (`id_score_mean_`) is a rank-invariant shift
+    and therefore cannot change AUROC at all.
+  - What remains is a real but narrow optimism: the "quietest" channels
+    are chosen using exactly the ID sample they are later evaluated
+    against, so the ID score distribution can be marginally better
+    behaved than it would be on unseen ID data.
+
+The packaged detector does not have this gap -- `Viyog.fit(id_loader)`
+then `.score()` on new data is the documented contract, and
+`examples/quickstart.py` splits its ID pool into disjoint fit and score
+halves. The gap is specific to the research pipeline that produced the
+paper's tables.
+
+We are disclosing rather than silently "fixing" this, deliberately. The
+artifact's obligation for the Reproducible badge is to regenerate *the
+numbers the paper reports*, under the protocol the paper used. Changing
+the evaluation protocol now would make the artifact stop reproducing the
+accepted paper -- which is a paper revision, not an artifact fix. The
+held-out-split variant is the right protocol for the extended version of
+this work, and a reviewer who wants to quantify the effect can do so
+directly: split the ID feature array in `analyse_model()`, fit the band
+on one half, score the other.

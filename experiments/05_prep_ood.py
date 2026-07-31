@@ -19,7 +19,7 @@ import os
 from config import OOD_DATASETS, OOD_ROOT
 from data_utils import get_ood_loader
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "5")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 def main() -> None:
