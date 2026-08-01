@@ -4,15 +4,14 @@
 UV       := uv run --frozen
 FIGS_OUT := paper_rev/figs/rebuttal
 
-.PHONY: help env figures paper response all clean demo-data demo
+.PHONY: help env figures paper all clean demo-data demo
 
 help:
 	@echo "Viyog make targets:"
 	@echo "  env       - uv sync the Python project"
 	@echo "  figures   - regenerate paper figures from results/analysis CSVs"
 	@echo "  paper     - build paper_rev/final.pdf (pdflatex+bibtex)"
-	@echo "  response  - build paper_rev/response.pdf (pdflatex x2)"
-	@echo "  all       - figures + paper + response"
+	@echo "  all       - figures + paper"
 	@echo "  demo-data - rebuild the ~38 KB CSVs the leaderboard app serves"
 	@echo "  demo      - run the Viyog-vs-pytorch-ood leaderboard locally (:7860)"
 	@echo "  clean     - remove LaTeX aux files in paper_rev/ (keeps PDFs, .bbl, data)"
@@ -39,10 +38,7 @@ figures:
 paper:
 	$(MAKE) -C paper_rev paper
 
-response:
-	$(MAKE) -C paper_rev response
-
-all: figures paper response
+all: figures paper
 
 # --- Demo / leaderboard ----------------------------------------------------
 # Distills results/analysis/*.csv into demo/data/*.csv (a few tens of KB) and
