@@ -7,7 +7,7 @@
 [![Tests](https://github.com/amanyagami/viyog/actions/workflows/test.yml/badge.svg)](https://github.com/amanyagami/viyog/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
 [![Live demo](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-009E73)](https://huggingface.co/spaces/amanyagami/viyog)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21730545-blue)](https://doi.org/10.5281/zenodo.21730545)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21731048-blue)](https://doi.org/10.5281/zenodo.21731048)
 
 **[▶ Try the interactive leaderboard](https://huggingface.co/spaces/amanyagami/viyog)** — Viyog vs 9 `pytorch-ood` baselines across 20 architectures.
 
