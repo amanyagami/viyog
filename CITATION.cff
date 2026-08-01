@@ -1,18 +1,55 @@
 cff-version: 1.2.0
 message: "If you use Viyog, please cite the paper below."
-title: "Viyog: a training-free first-layer detector separating adversarial from out-of-distribution inputs"
+title: "Viyog: Separating Adversarial and Out-of-Distribution"
 type: software
-version: "0.1.3-codes26-ae-4"
+version: "0.1.3-codes26-ae-5"
 date-released: "2026-08-01"
-doi: "10.5281/zenodo.21731048"
+doi: "10.5281/zenodo.21731404"
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.21731048"
-    description: "Version-specific archive of v0.1.3-codes26-ae-4, the CODES 2026 AE artifact"
+    value: "10.5281/zenodo.21731404"
+    description: "Version-specific archive of v0.1.3-codes26-ae-5, the CODES 2026 AE artifact"
 authors:
   - family-names: Singh
     given-names: Aman
-    email: singh052001aman@gmail.com
+    email: asing651@asu.edu
+    affiliation: "Arizona State University"
+  - family-names: Kumar
+    given-names: Abhinav
+    email: akuma294@asu.edu
+    affiliation: "Arizona State University"
+  - family-names: Kashyap
+    given-names: Rishab
+    email: rkashya6@asu.edu
+    affiliation: "Arizona State University"
+  - family-names: Park
+    given-names: Soyeong
+    email: psy980823@yonsei.ac.kr
+    affiliation: "Yonsei University"
+  - family-names: Gurjar
+    given-names: Ameya
+    email: agurjar2@asu.edu
+    affiliation: "Arizona State University"
+  - family-names: Ko
+    given-names: Yohan
+    email: Yohan.Ko@yonsei.ac.kr
+    affiliation: "Yonsei University"
+  - family-names: So
+    given-names: Hwisoo
+    email: hwisoo.so@knu.ac.kr
+    affiliation: "Kyungpook National University"
+  - family-names: Hwang
+    given-names: Uiwon
+    email: uiwon.hwang@ewha.ac.kr
+    affiliation: "Ewha Womans University"
+  - family-names: Lee
+    given-names: Kyoungwoo
+    email: kyoungwoo.lee@yonsei.ac.kr
+    affiliation: "Yonsei University"
+  - family-names: Shrivastava
+    given-names: Aviral
+    email: aviral.shrivastava@asu.edu
+    affiliation: "Arizona State University"
 license: MIT
 repository-code: "https://github.com/amanyagami/viyog"
 url: "https://pypi.org/project/viyog/"
@@ -24,7 +61,36 @@ keywords:
 preferred-citation:
   type: conference-paper
   title: "Viyog: Separating Adversarial and Out-of-Distribution"
+  collection-title: "Proceedings of the International Conference on Hardware/Software Codesign and System Synthesis (CODES+ISSS)"
+  year: 2026
   authors:
     - family-names: Singh
       given-names: Aman
-  year: 2026
+      affiliation: "Arizona State University"
+    - family-names: Kumar
+      given-names: Abhinav
+      affiliation: "Arizona State University"
+    - family-names: Kashyap
+      given-names: Rishab
+      affiliation: "Arizona State University"
+    - family-names: Park
+      given-names: Soyeong
+      affiliation: "Yonsei University"
+    - family-names: Gurjar
+      given-names: Ameya
+      affiliation: "Arizona State University"
+    - family-names: Ko
+      given-names: Yohan
+      affiliation: "Yonsei University"
+    - family-names: So
+      given-names: Hwisoo
+      affiliation: "Kyungpook National University"
+    - family-names: Hwang
+      given-names: Uiwon
+      affiliation: "Ewha Womans University"
+    - family-names: Lee
+      given-names: Kyoungwoo
+      affiliation: "Yonsei University"
+    - family-names: Shrivastava
+      given-names: Aviral
+      affiliation: "Arizona State University"
