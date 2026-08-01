@@ -8,13 +8,20 @@ Available
 The code (the `viyog` PyPI package, its full reproduction pipeline in
 experiments/, the paper source in paper_rev/, and an interactive
 leaderboard in demo/) is public, MIT-licensed (LICENSE), and archived at a
-persistent, version-specific DOI:
+persistent, version-specific DOI. Each tagged release is archived
+separately; the DOI submitted for artifact evaluation is the one for this
+release, and it is recorded on the artifact submission form and in the
+README badge and CITATION.cff of the *following* commit.
 
-    https://doi.org/10.5281/zenodo.21616741
+    Concept DOI (always resolves to the newest archived version):
+        https://doi.org/10.5281/zenodo.21614317
 
-(This is the version-specific DOI for the v0.1.3-codes26-ae release, not the
-concept DOI 10.5281/zenodo.21614317, which always resolves to the latest
-version and should not be cited per the AE call's guidance.)
+Note on the self-reference: Zenodo mints a version's DOI only *after* that
+version's snapshot is taken, so a release cannot contain its own
+version-specific DOI. The badge and CITATION.cff inside any given snapshot
+therefore name the immediately preceding archived version. Per the AE
+call's guidance the version-specific DOI -- not the concept DOI above -- is
+what is cited on the submission form.
 
 It includes the five required documentation files (README,
 REQUIREMENTS, STATUS, LICENSE, INSTALL) and is reasonable and complete: it
@@ -29,6 +36,12 @@ The artifact runs and produces the outputs it describes:
   - `examples/quickstart.py --smoke` runs the packaged `Viyog` detector
     end-to-end on synthetic data and prints the three separation AUROCs the
     README documents.
+  - `bash reproduce_t1.sh --quick` runs the *entire* T1 pipeline end to end
+    on real checkpoints and real data -- reduced to one backbone, one
+    attack and two OOD sets -- so a reviewer can confirm the artifact works
+    on their own hardware before committing hours to the full tier. It
+    preflights the machine, scales both GPU stages to the card's free VRAM,
+    and verifies that every expected output file was actually produced.
   - Every script referenced in INSTALL was executed during artifact
     preparation and produces the file/output documented there.
 
