@@ -118,14 +118,21 @@ def _text(
     style: str = "normal",
     linespacing: float = 1.35,
 ) -> None:
-    """Place text at figure-fraction coordinates."""
+    """Place text at figure-fraction coordinates.
+
+    Camera-ready: all figure lettering renders black. Colour is carried by
+    box fills, borders and arrows, so the ID / OOD / ADV / Viyog coding is
+    unchanged -- only the glyphs are forced to black. The ``color`` argument
+    is accepted and ignored so call sites stay readable as intent.
+    """
+    del color  # camera-ready: text is always black
     fig.text(
         x,
         y,
         s,
         fontsize=fontsize,
         fontweight=fontweight,
-        color=color,
+        color="#111111",
         ha=ha,
         va=va,
         zorder=zorder,

@@ -40,6 +40,9 @@ DNN_EC = "#B8860B"
 GATE_FC = "#E2F6EE"
 OOD_FC = "#E2EFFB"
 ADV_FC = "#FCE3E1"
+# All figure TEXT renders black; colour is carried by fills, borders,
+# markers and arrows so the OOD/ADV/Viyog coding survives.
+TEXT_BLACK = "#111111"
 
 
 def _textbox(
@@ -173,7 +176,7 @@ def main() -> None:
             fontweight="bold",
             ha="center",
             va="top",
-            color="#33414F",
+            color=TEXT_BLACK,
             zorder=5,
         )
 
@@ -200,7 +203,7 @@ def main() -> None:
         fontsize=6.3,
         ha="center",
         va="center",
-        color="#2C6BB0",
+        color=TEXT_BLACK,
         style="italic",
         zorder=3,
     )
@@ -224,7 +227,7 @@ def main() -> None:
         fontsize=6.0,
         ha="center",
         va="center",
-        color=C_BASE,
+        color=TEXT_BLACK,
         fontweight="bold",
         linespacing=1.15,
         zorder=7,
@@ -250,7 +253,7 @@ def main() -> None:
         fontsize=6.0,
         ha="center",
         va="center",
-        color=C_COMP,
+        color=TEXT_BLACK,
         fontweight="bold",
         linespacing=1.15,
         zorder=7,
@@ -258,7 +261,7 @@ def main() -> None:
 
     # ── ZONE 2: classifier ──────────────────────────────────────────────────
     dnx, dny = 0.49, 0.60
-    _textbox(ax, dnx, dny, 0.13, 0.17, "DNN\nclassifier", DNN_FC, DNN_EC, 7.2, color=DNN_EC)
+    _textbox(ax, dnx, dny, 0.13, 0.17, "DNN\nclassifier", DNN_FC, DNN_EC, 7.2, color=TEXT_BLACK)
     ax.text(
         dnx,
         0.34,
@@ -267,7 +270,7 @@ def main() -> None:
         fontsize=5.9,
         ha="center",
         va="center",
-        color="#7A6512",
+        color=TEXT_BLACK,
         style="italic",
         linespacing=1.2,
         zorder=5,
@@ -278,7 +281,7 @@ def main() -> None:
 
     # ── ZONE 3: Viyog gate ────────────────────────────────────────────────
     gx, gy = 0.65, 0.60
-    _textbox(ax, gx, gy, 0.12, 0.19, "Viyog", GATE_FC, C_OURS, 8.2, color=C_OURS, lw=2.2)
+    _textbox(ax, gx, gy, 0.12, 0.19, "Viyog", GATE_FC, C_OURS, 8.2, color=TEXT_BLACK, lw=2.2)
     ax.text(
         gx,
         0.355,
@@ -287,7 +290,7 @@ def main() -> None:
         fontsize=5.9,
         ha="center",
         va="center",
-        color="#1A7A4A",
+        color=TEXT_BLACK,
         style="italic",
         linespacing=1.2,
         zorder=5,
@@ -306,7 +309,7 @@ def main() -> None:
         OOD_FC,
         C_COMP,
         7.0,
-        color=C_COMP,
+        color=TEXT_BLACK,
     )
     _textbox(
         ax,
@@ -318,7 +321,7 @@ def main() -> None:
         ADV_FC,
         C_BASE,
         7.0,
-        color=C_BASE,
+        color=TEXT_BLACK,
     )
     # gate -> two different responses
     _arrow(ax, gx + 0.06, gy + 0.03, rxc - 0.125, 0.72, C_COMP, rad=-0.15)
@@ -347,7 +350,7 @@ def main() -> None:
         fontsize=6.6,
         ha="center",
         va="center",
-        color="#16603C",
+        color=TEXT_BLACK,
         fontweight="bold",
         zorder=5,
     )

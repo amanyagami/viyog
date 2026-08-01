@@ -200,7 +200,7 @@ def main() -> None:
         ha="center",
         va="center",
         fontsize=6.0,
-        color=C_OURS,
+        color=INK,  # camera-ready: lettering is black
         fontweight="bold",
     )
 
@@ -220,7 +220,7 @@ def main() -> None:
         ha="center",
         va="center",
         fontsize=5.6,
-        color=C_OURS,
+        color=INK,  # camera-ready: lettering is black
         linespacing=1.1,
     )
     fig.text(
@@ -230,7 +230,7 @@ def main() -> None:
         ha="center",
         va="center",
         fontsize=5.6,
-        color=C_BASE,
+        color=INK,  # camera-ready: lettering is black
         linespacing=1.1,
     )
     fig.text(
@@ -296,7 +296,7 @@ def main() -> None:
             ha="center",
             va="center",
             fontsize=6.2,
-            color=ec,
+            color=INK,  # camera-ready: lettering is black; the box border carries the colour
             fontweight="bold",
             zorder=5,
         )

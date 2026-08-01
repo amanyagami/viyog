@@ -129,7 +129,7 @@ def _panel_a(
             xy=((x0 + x1) / 2, sorted_means[dorm_positions].max() * 1.05),
             xytext=((x0 + x1) / 2 + 4, sorted_means.max() * 0.55),
             fontsize=6.5,
-            color=vs.C_OURS,
+            color="#111111",  # camera-ready: figure lettering is black
             arrowprops=dict(arrowstyle="-", color=vs.C_OURS, lw=0.8),
             ha="left",
         )
@@ -288,7 +288,7 @@ def _panel_c(ax: plt.Axes) -> None:
         va="top",
         fontsize=6.5,
         style="italic",
-        color="#444444",
+        color="#111111",  # camera-ready: figure lettering is black
     )
 
 
