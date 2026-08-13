@@ -5,7 +5,7 @@
 [![Downloads](https://static.pepy.tech/badge/viyog)](https://pepy.tech/project/viyog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
 [![Live demo](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-009E73)](https://huggingface.co/spaces/amanyagami/viyog)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21731404-blue)](https://doi.org/10.5281/zenodo.21731404)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21918573-blue)](https://doi.org/10.5281/zenodo.21918573)
 
 **[▶ Try the interactive leaderboard](https://huggingface.co/spaces/amanyagami/viyog)** — Viyog vs 9 `pytorch-ood` baselines across 20 architectures.
 
@@ -43,7 +43,7 @@ The following are the maintained artifacts for this paper (verified
 
 | Artifact | Canonical version | Purpose |
 | --- | --- | --- |
-| [Zenodo archive](https://doi.org/10.5281/zenodo.21731404) | AE v5, DOI `10.5281/zenodo.21731404` | Version-specific archival citation. The [concept DOI](https://doi.org/10.5281/zenodo.21614317) is the collection landing page. |
+| [Zenodo archive](https://doi.org/10.5281/zenodo.21918573) | AE v6, DOI `10.5281/zenodo.21918573` | Version-specific archival citation. The [concept DOI](https://doi.org/10.5281/zenodo.21614317) is the collection landing page. |
 | [GitHub source](https://github.com/amanyagami/viyog) | [`v0.1.3-codes26-ae-6`](https://github.com/amanyagami/viyog/releases/tag/v0.1.3-codes26-ae-6) | Package, experiments, paper source, and reproduction entry point. |
 | [PyPI package](https://pypi.org/project/viyog/0.1.3/) | `viyog==0.1.3` | Installable dormant-band-TV detector. |
 | [Model weights](https://huggingface.co/amanyagami/viyog-weights/tree/b96263ae28a8585acaad6a002a0298b6b6c2d735) | revision `b96263a`; 34 checkpoints, 5.00 GB (4.66 GiB) | Fine-tuned backbones. The six-model T1 subset is 1.58 GB (1.47 GiB). |
@@ -278,5 +278,5 @@ Out-of-Distribution"* using [CITATION.cff](CITATION.cff). It follows the
 CODES+ISSS 2026 journal route in IEEE TCAD. A publication DOI, volume, issue,
 and pages have not yet been assigned, so they are intentionally omitted.
 
-For the software artifact itself, cite the immutable AE v5 archive:
-[`10.5281/zenodo.21731404`](https://doi.org/10.5281/zenodo.21731404).
+For the software artifact itself, cite the immutable AE v6 archive:
+[`10.5281/zenodo.21918573`](https://doi.org/10.5281/zenodo.21918573).

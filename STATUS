@@ -5,10 +5,10 @@ Badges applied for: Available, Reviewed, Reproducible.
 
 Canonical release
 -----------------
-The intended latest release remains package version 0.1.3 / AE v5. Canonical
+The intended latest release remains package version 0.1.3 / AE v6. Canonical
 artifact order is:
 
-1. Version-specific Zenodo archive: https://doi.org/10.5281/zenodo.21731404
+1. Version-specific Zenodo archive: https://doi.org/10.5281/zenodo.21918573
 2. GitHub release/tag: https://github.com/amanyagami/viyog/releases/tag/v0.1.3-codes26-ae-6
 3. PyPI package: https://pypi.org/project/viyog/0.1.3/
 4. Hugging Face weights at revision
@@ -17,7 +17,7 @@ artifact order is:
 The Zenodo record is open, MIT-licensed, names all ten authors, and contains
 the 2,834,491-byte v5 source ZIP. Its concept DOI,
 https://doi.org/10.5281/zenodo.21614317, is only the collection landing page;
-use the version DOI above when citing or reproducing AE v5.
+use the version DOI above when citing or reproducing AE v6.
 
 The weights repository contains 34 checkpoints and uses 5,003,987,510 bytes
 (5.00 GB / 4.66 GiB). The six T1 files total 1.58 GB (1.47 GiB). The optional
