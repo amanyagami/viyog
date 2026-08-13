@@ -5,30 +5,46 @@ publisher = {MIT Press},
 title = {Scaling Learning Algorithms Towards {AI}},
 year = {2007}
 }
-% ---------------------------------------------------------------
-% Add these two entries to your existing refs.bib file.
-% They are already cited in the updated .tex as:
-%   \cite{zhang2024splitting}   -- the ICML gradient-attribution paper
-%   \cite{szyc2023ood}          -- the UAI experimental-reliability paper
-% ---------------------------------------------------------------
 
-@inproceedings{zhang2024splitting,
+@inproceedings{zhang2025splitting,
   title     = {Splitting \& Integrating: Out-of-Distribution Detection
                via Adversarial Gradient Attribution},
-  author    = {Zhang, Jiayu and others},
-  booktitle = {Forty-Second International Conference on Machine Learning},
-  year      = {2024}
+  author    = {Zhang, Jiayu and Wang, Xinyi and Jin, Zhibo and Zhu, Zhiyu and
+               Zhou, Jianlong and Chen, Fang and Chen, Huaming},
+  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {267},
+  pages     = {76213--76224},
+  publisher = {PMLR},
+  year      = {2025},
+  url       = {https://proceedings.mlr.press/v267/zhang25by.html}
 }
 
 @inproceedings{szyc2023ood,
-  title     = {Why out-of-distribution detection experiments are not reliable
-               --- subtle experimental details muddle the {OOD} detector rankings},
+  title     = {Why Out-of-Distribution Detection Experiments Are Not Reliable:
+               Subtle Experimental Details Muddle the {OOD} Detector Rankings},
   author    = {Szyc, Kamil and Walkowiak, Tomasz and Maciejewski, Henryk},
-  booktitle = {Uncertainty in Artificial Intelligence},
+  booktitle = {Proceedings of the Thirty-Ninth Conference on Uncertainty in Artificial Intelligence},
   series    = {Proceedings of Machine Learning Research},
+  volume    = {216},
+  pages     = {2078--2088},
+  editor    = {Evans, Robin J. and Shpitser, Ilya},
   publisher = {PMLR},
-  year      = {2023}
+  year      = {2023},
+  url       = {https://proceedings.mlr.press/v216/szyc23a.html}
 }
+
+@misc{viyogartifact2026,
+  title        = {{Viyog}: Separating Adversarial and Out-of-Distribution},
+  author       = {Singh, Aman and Kumar, Abhinav and Kashyap, Rishab and
+                  Park, Soyeong and Gurjar, Ameya and Ko, Yohan and So, Hwisoo and
+                  Hwang, Uiwon and Lee, Kyoungwoo and Shrivastava, Aviral},
+  howpublished = {Zenodo},
+  year         = {2026},
+  version      = {v0.1.3-codes26-ae-5},
+  doi          = {10.5281/zenodo.21731404}
+}
+
 @article{Hinton06,
 author = {Hinton, Geoffrey E. and Osindero, Simon and Teh, Yee Whye},
 journal = {Neural Computation},
@@ -122,7 +138,6 @@ title = {First line of defense: a robust first layer mitigates adversarial attac
 year = {2025},
 isbn = {978-1-57735-897-8},
 publisher = {AAAI Press},
-url = {https://doi.org/10.1609/aaai.v39i7.32771},
 doi = {10.1609/aaai.v39i7.32771},
 abstract = {Adversarial training (AT) incurs significant computational overhead, leading to growing interest in designing inherently robust architectures. We demonstrate that a carefully designed first layer of the neural network can serve as an implicit adversarial noise filter (ANF). This filter is created using a combination of large kernel size, increased convolution filters, and a maxpool operation. We show that integrating this filter as the first layer in architectures such as ResNet, VGG, and EfficientNet results in adversarially robust networks. Our approach achieves higher adversarial accuracies than existing natively robust architectures without AT and is competitive with adversarial-trained architectures across a wide range of datasets. Supporting our findings, we show that (a) the decision regions for our method have better margins, (b) the visualized loss surfaces are smoother, (c) the modified peak signal-to-noise ratio (mPSNR) values at the output of the ANF are higher, (d) high-frequency components are more attenuated, and (e) architectures incorporating ANF exhibit better denoising in Gaussian noise compared to baseline architectures.},
 booktitle = {Proceedings of the Thirty-Ninth AAAI Conference on Artificial Intelligence and Thirty-Seventh Conference on Innovative Applications of Artificial Intelligence and Fifteenth Symposium on Educational Advances in Artificial Intelligence},
@@ -185,7 +200,6 @@ address = {New York, NY, USA},
 volume = {56},
 number = {7},
 issn = {0360-0300},
-url = {https://doi.org/10.1145/3626314},
 doi = {10.1145/3626314},
 abstract = {Artificial Intelligence (AI) can enable the development of next-generation autonomous safety-critical systems in which Machine Learning (ML) algorithms learn optimized and safe solutions. AI can also support and assist human safety engineers in developing safety-critical systems. However, reconciling both cutting-edge and state-of-the-art AI technology with safety engineering processes and safety standards is an open challenge that must be addressed before AI can be fully embraced in safety-critical systems. Many works already address this challenge, resulting in a vast and fragmented literature. Focusing on the industrial and transportation domains, this survey structures and analyzes challenges, techniques, and methods for developing AI-based safety-critical systems, from traditional functional safety systems to autonomous systems. AI trustworthiness spans several dimensions, such as engineering, ethics and legal, and this survey focuses on the safety engineering dimension.},
 journal = {ACM Comput. Surv.},
@@ -251,11 +265,12 @@ keywords = {functional safety, autonomous systems}
   year={2017}
 }
 @inproceedings{kirchheim2022pytorch,
-  title={Pytorch-ood: A library for out-of-distribution detection based on pytorch},
+  title={{PyTorch-OOD}: A Library for Out-of-Distribution Detection Based on {PyTorch}},
   author={Kirchheim, Konstantin and Filax, Marco and Ortmeier, Frank},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops},
   pages={4351--4360},
-  year={2022}
+  year={2022},
+  url={https://openaccess.thecvf.com/content/CVPR2022W/HCIS/html/Kirchheim_PyTorch-OOD_A_Library_for_Out-of-Distribution_Detection_Based_on_PyTorch_CVPRW_2022_paper.html}
 }
 @article{hong2024out,
   title={Out-of-distribution detection in medical image analysis: A survey},
@@ -274,12 +289,13 @@ keywords = {functional safety, autonomous systems}
   year={2020}
 }
 @inproceedings{unicad,
-  title={UNICAD: A unified approach for attack detection, noise reduction and novel class identification},
+  title={{UNICAD}: A Unified Approach for Attack Detection, Noise Reduction and Novel Class Identification},
   author={Pellicer, Alvaro Lopez and Giatgong, Kittipos and Li, Yi and Suri, Neeraj and Angelov, Plamen},
   booktitle={2024 International Joint Conference on Neural Networks (IJCNN)},
   pages={1--8},
   year={2024},
-  organization={IEEE}
+  organization={IEEE},
+  doi={10.1109/IJCNN60899.2024.10651159}
 }
 @article{chen2009local,
   title={Local multidimensional scaling for nonlinear dimension reduction, graph drawing, and proximity analysis},

@@ -7,9 +7,10 @@
 #      bash reproduce_t1.sh            # full Tier T1: reproduce the paper
 #
 #  Timing is dominated by FIRST-RUN DATASET DOWNLOADS, not compute. --quick
-#  needs ~2 min of GPU work but must fetch ~350 MB of benchmark data the
-#  first time; on a throttled link that can be 30-60 min. Once cached, a
-#  re-run is minutes. The full tier measured 4 h 7 m end to end on one H200.
+#  needs ~2 min of GPU work but must fetch ~350 MB of benchmark data plus
+#  the 1.58 GB six-model checkpoint set. On a throttled link that can take
+#  30-60 min. Once cached, a re-run is minutes. The full tier measured
+#  4 h 7 m end to end on one H200.
 #
 #  --quick runs the SAME pipeline end to end (real checkpoints, real data,
 #  real attack) on one backbone / one attack / two OOD sets. It proves the
@@ -79,8 +80,8 @@ command -v nvidia-smi >/dev/null 2>&1 \
     || die "no nvidia-smi — Tier T1 needs one CUDA GPU.
 
    Without a GPU you can still run the CPU-only sanity tier:
-       uv run pytest tests/ -q
-       uv run python examples/quickstart.py --smoke"
+       uv run --frozen pytest tests/ -q
+       uv run --frozen python examples/quickstart.py --smoke"
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 ok "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
@@ -124,26 +125,27 @@ fi
 
 # ------------------------------------------------------------------ pipeline
 step "1/6  Environment"
-uv sync --group experiments || die "uv sync failed"
+uv sync --frozen --group experiments || die "uv sync failed"
 ok "dependencies installed"
 
-step "2/6  Checkpoints  (~250 MB, HuggingFace)"
-uv run python experiments/01_download.py --core-only \
-    || die "checkpoint download failed — check network access to huggingface.co"
+step "2/6  Checkpoints  (1.58 GB / 1.47 GiB, Hugging Face)"
+uv run --frozen python experiments/01_download.py --core-only \
+    || die "pinned checkpoint download or verification failed"
+ok "canonical core weights downloaded and verified"
 
 step "3/6  Adversarial generation  ($N_MODELS model(s) x $N_ATTACKS attack(s))"
-uv run python experiments/03_gen_adversarial.py \
+uv run --frozen python experiments/03_gen_adversarial.py \
         --models $MODELS --attacks $ATTACKS ${ATK_B:+--batch $ATK_B} \
     || die "adversarial generation failed.
    If this was a CUDA out-of-memory, retry with a smaller batch:
-       uv run python experiments/03_gen_adversarial.py --models $MODELS --attacks $ATTACKS --batch 8"
+       uv run --frozen python experiments/03_gen_adversarial.py --models $MODELS --attacks $ATTACKS --batch 8"
 
 step "4/6  Feature extraction  (ID + $N_OOD OOD + $N_ATTACKS ADV per model)"
-uv run python experiments/06b_extract_full.py \
+uv run --frozen python experiments/06b_extract_full.py \
         --models $MODELS --attacks $ATTACKS $OOD_ARG ${FEAT_B:+--batch $FEAT_B} \
     || die "feature extraction failed.
    If this was a CUDA out-of-memory, retry with a smaller batch:
-       uv run python experiments/06b_extract_full.py --models $MODELS --attacks $ATTACKS $OOD_ARG --batch 64"
+       uv run --frozen python experiments/06b_extract_full.py --models $MODELS --attacks $ATTACKS $OOD_ARG --batch 64"
 
 # Extraction warns-and-continues when an OOD split fails, so exit status alone
 # does not prove coverage. A missing split silently changes T3.
@@ -160,7 +162,7 @@ else
 fi
 
 step "6/6  Signatures, evaluation, comparison table"
-uv run python experiments/09_signatures_full.py --models $MODELS \
+uv run --frozen python experiments/09_signatures_full.py --models $MODELS \
     || die "signature recomputation failed"
 # Step 9 gates models on a clean-accuracy file that the T1 path does not
 # produce; without a gate bypass it analyses nothing yet still exits 0.
@@ -171,7 +173,7 @@ if (( SIGS < N_MODELS )); then
    [gate] line in the output above."
 fi
 ok "$SIGS signature CSV(s) written"
-uv run python experiments/full_eval.py --dataset cifar100 --models $MODELS \
+uv run --frozen python experiments/full_eval.py --dataset cifar100 --models $MODELS \
     || die "full_eval failed"
 
 # full_eval prints 'no complete features — skip' and exits 0 when its inputs
@@ -182,7 +184,7 @@ SUMMARY=results/analysis/full_eval_cifar100_summary.csv
    feature set. Review step 5's coverage warnings above."
 ok "$(basename "$SUMMARY") written"
 
-uv run python experiments/exp_master_table.py --dataset cifar100 \
+uv run --frozen python experiments/exp_master_table.py --dataset cifar100 \
     || warn "master comparison table failed (secondary output; core results intact)"
 
 # ------------------------------------------------------------------ verdict
@@ -206,7 +208,7 @@ EOF
     exit 0
 fi
 
-uv run python - "$SUMMARY" <<'PY'
+uv run --frozen python - "$SUMMARY" <<'PY'
 import csv, sys, pathlib
 
 TOL = 0.02                      # seed / hardware nondeterminism
@@ -244,7 +246,7 @@ ${BLD}------------------------------------------------------------------${RST}
 
  The two efficiency headlines (~0.3 KB state, ~2.28% of a forward pass)
  are architecture-only — no GPU, weights or data needed:
-   uv run python experiments/eval_detector_cost.py
-   uv run python experiments/eval_systems.py
+   uv run --frozen python experiments/eval_detector_cost.py
+   uv run --frozen python experiments/eval_systems.py
 ${BLD}------------------------------------------------------------------${RST}
 EOF

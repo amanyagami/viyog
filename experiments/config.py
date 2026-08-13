@@ -97,6 +97,8 @@ NUM_CLASSES = 100  # CIFAR-100
 # amanyagami/Cifar100_Finetuned is an older, incomplete (4-file) mirror kept
 # only for provenance — not used by 01_download.py.
 HF_REPO = "amanyagami/viyog-weights"
+HF_REVISION = "b96263ae28a8585acaad6a002a0298b6b6c2d735"
+
 # The original 4 finetuned checkpoints, which keep legacy flat filenames at
 # the repo root (see _CIFAR100_WEIGHTS below).
 HF_LEGACY_WEIGHT_FILES = [
@@ -105,8 +107,6 @@ HF_LEGACY_WEIGHT_FILES = [
     "tf_efficientnetv2_l_cifar100.pth",
     "vit_b_cifar100.pth",
 ]
-# Google Drive folder ID (backup source)
-GDRIVE_FOLDER_ID = "1RRzfF7mMa424lbJzp_brA2gg8D4nmaD9"
 
 # ---------------------------------------------------------------------------
 # Adversarial attacks  (6: highest acceptance, ordered fastest → slowest)
@@ -245,54 +245,65 @@ MODEL_ATTACK_BATCH: dict[str, int] = {
     #   convnextv2_base  ~232 MB/img → batch 128 =  30 GB on GPU 0 (122 GB free)
     #   vit_base         ~123 MB/img → batch 512 =  63 GB on GPU 4 ( 71 GB free)
     #   swin_tiny         ~40 MB/img → batch 512 =  20 GB on GPU 4 ( 71 GB free)
-    "efficientnetv2_l": 48,    # relocated to idle GPU2 (25GB free): 48×433MB≈21GB fits CW;
-                               # DeepFool is work-bound so smaller batch ≈ no time cost
-    "convnextv2_base":  192,   # 128 starved GPU0 to 39% util; 192 (~45GB) fits 57GB free
-    "vit_base":         256,   # was 512 → APGD OOM'd; GPU 4 now shares w/ a 70 GB neighbor
-    "swin_tiny":        256,   # runs concurrently w/ vit_base on GPU 4 → keep small
+    #
+    # 2026-08-08: these were tuned for sharing a GPU with other jobs. When run
+    # alone on a full H200 (143 GB), bumped by a safe margin below, EXCEPT
+    # vit_base (kept at its post-OOM value — 512 previously OOM'd here).
+    "efficientnetv2_l": 64,    # 64×433MB≈28GB, safe headroom on a dedicated H200
+    "convnextv2_base":  224,   # ~52GB, up from 192 (measured ~96GB total incl. overhead at 192)
+    "vit_base":         256,   # unchanged — 512 previously OOM'd on this arch
+    "swin_tiny":        384,   # ~15GB, tiny footprint, generous headroom
     # Edge models (3–11 M params) — tiny graph, large batch fits trivially.
-    "mobilenetv3_l":    512,
-    "effnet_lite0":     512,
-    "mobileone_s1":     512,
-    "fastvit_sa12":     512,
-    "mobilenetv4_m":    512,
-    "efficientvit_b1":  512,
-    "edgenext_small":   512,
+    "mobilenetv3_l":    768,   # verified OK at 768 on a dedicated H200
+    "effnet_lite0":     768,   # verified OK at 768 on a dedicated H200
+    "mobileone_s1":     768,
+    "fastvit_sa12":     320,   # hybrid-ViT, not a plain CNN — 768 OOM'd (139.6/139.8GB) on
+                               # APGD-CE's 2nd step; memory grows across steps, not just with
+                               # batch size, so scaled well below a naive 768*(free/used) ratio
+    "mobilenetv4_m":    768,
+    "efficientvit_b1":  320,   # also attention-based (hardware-efficient ViT), same risk as
+                               # fastvit_sa12 above — reduced pre-emptively rather than risk
+                               # another OOM/restart cycle
+    "edgenext_small":   768,
     # ResNet / DenseNet families (paper baselines + variants).
-    "resnet18":         512,
-    "resnet34":         512,
-    "resnet50":         256,
-    "resnet101":        192,
-    "resnet152":        128,
-    "densenet121":      256,
-    "densenet161":      128,
-    "densenet169":      192,
-    "densenet201":      128,
+    "resnet18":         768,
+    "resnet34":         768,
+    "resnet50":         384,
+    "resnet101":        256,
+    "resnet152":        176,
+    "densenet121":      384,
+    "densenet161":      176,
+    "densenet169":      256,
+    "densenet201":      176,
 }
 
 # Feature extraction uses torch.no_grad() → activations freed immediately after
 # the hook fires.  Only current-batch features sit in VRAM → can go 4-8× larger.
 MODEL_FEATURE_BATCH: dict[str, int] = {
-    "efficientnetv2_l": 1024,
-    "convnextv2_base":  2048,
-    "vit_base":         2048,
+    # 2026-08-08: bumped for a dedicated H200 (no GPU sharing). Left unchanged
+    # where a batch size was previously reduced to fix a real crash (swin_tiny
+    # OOM; mobileone_s1/resnet18/resnet34 int32 avg_pool2d overflow at 4096) —
+    # those two are excluded from this panel anyway.
+    "efficientnetv2_l": 1536,
+    "convnextv2_base":  3072,
+    "vit_base":         3072,
     "swin_tiny":        1024,   # lowered from 4096 — OOM'd on shared GPU0
     "mobilenetv3_l":   4096,
     "effnet_lite0":    4096,
     "mobileone_s1":    2048,   # 4096 overflowed int32 in avg_pool2d (HF stat)
-    "fastvit_sa12":    2048,
+    "fastvit_sa12":    3072,
     "mobilenetv4_m":   4096,
     "efficientvit_b1": 4096,
     "edgenext_small":  4096,
     "resnet18":        2048,   # 4096*64*112*112 > INT_MAX → avg_pool2d overflow
     "resnet34":        2048,   # (same fix; resnet50 already uses 2048 safely)
-    "resnet50":        2048,
-    "resnet101":       1536,
-    "resnet152":       1024,
-    "densenet121":     1536,
-    "densenet161":     1024,
-    "densenet169":     1280,
-    "densenet201":     1024,
+    "resnet50":        3072,
+    "resnet101":       2048,
+    "resnet152":       1536,
+    "densenet121":     2048,
+    "densenet161":     1536,
+    "densenet169":     1792,
+    "densenet201":     1536,
 }
 
 # Batch size for forward-only evaluation (clean + adversarial accuracy).

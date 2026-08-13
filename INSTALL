@@ -5,6 +5,22 @@ See REQUIREMENTS for the hardware/software each tier needs and STATUS for
 which badges this artifact claims and why. This file is the step-by-step
 walkthrough; every step ends with the output that confirms it worked.
 
+Canonical release
+-----------------
+Use these artifacts in this order:
+
+1. Zenodo AE v5 archive: https://doi.org/10.5281/zenodo.21731404
+2. GitHub tag: https://github.com/amanyagami/viyog/releases/tag/v0.1.3-codes26-ae-5
+3. PyPI package: https://pypi.org/project/viyog/0.1.3/
+4. Model weights, pinned revision:
+   https://huggingface.co/amanyagami/viyog-weights/tree/b96263ae28a8585acaad6a002a0298b6b6c2d735
+
+The optional adversarial dataset (revision 5e15272b1023fbfb8420242c7da64884aacb9b91)
+is supplemental only; this walkthrough regenerates attacks instead of downloading
+its 40 HDF5 files. The live Space is an optional static explorer, not an execution
+environment. The public Read the Docs site is currently stale; use docs/ in this
+checkout until that external deployment is rebuilt.
+
 0. Clone
 --------
     git clone https://github.com/amanyagami/viyog.git
@@ -12,18 +28,18 @@ walkthrough; every step ends with the output that confirms it worked.
 
 1. Environment
 --------------
-    uv sync
+    uv sync --frozen
 
 Expected: creates `.venv/` and installs torch, numpy (and pytest/ruff for
 dev). No errors.
 
 Tier T0 -- install & sanity check (CPU, ~2 minutes)
 -------------------------------------------------------
-    uv run pytest tests/ -q
+    uv run --frozen pytest tests/ -q
 
-Expected: `16 passed`.
+Expected: `29 passed`.
 
-    uv run python examples/quickstart.py --smoke
+    uv run --frozen python examples/quickstart.py --smoke
 
 Expected output ends with three AUROC lines, e.g.:
 
@@ -44,20 +60,27 @@ validation pass first). It runs every step below, sizes both GPU stages to
 your card's *free* VRAM automatically, and verifies coverage at each stage.
 The manual walkthrough below is for driving the steps individually.
 
-    uv sync --group experiments
+    uv sync --frozen --group experiments
 
 Expected: adds torchattacks, timm, pytorch-ood, h5py, pandas, fvcore, and the
 rest of the experiments/ pipeline's dependencies to `.venv/`.
 
-    uv run python experiments/01_download.py --core-only
+The wrapper and manual path use the same downloader. It fetches and verifies the
+six-file subset from immutable Hugging Face revision
+`b96263ae28a8585acaad6a002a0298b6b6c2d735`:
 
-Expected: fetches 6 checkpoints (~250 MB total) from
-`huggingface.co/amanyagami/viyog-weights` and ends with:
+    uv run --frozen python experiments/01_download.py --core-only
+
+Expected: downloads and verifies 6 checkpoints totaling 1.58 GB (1.47 GiB),
+then ends with:
 
     All required (core) weights present.
 
+There is no fallback to the incompatible legacy Google Drive filenames. If
+Hugging Face is unavailable, the downloader exits nonzero; retry later.
+
     export CUDA_VISIBLE_DEVICES=0   # whichever GPU you want to use
-    uv run python experiments/03_gen_adversarial.py \
+    uv run --frozen python experiments/03_gen_adversarial.py \
         --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
         --attacks fgsm bim pgd apgd_ce
 
@@ -65,7 +88,7 @@ Expected: writes `data/adversarial/<model>_<attack>.h5` for all 24
 model x attack combinations; ends with a per-file size listing and no errors.
 CIFAR-100 downloads automatically on first run if not already present.
 
-    uv run python experiments/06b_extract_full.py \
+    uv run --frozen python experiments/06b_extract_full.py \
         --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
         --attacks fgsm bim pgd apgd_ce
 
@@ -80,13 +103,13 @@ datasets auto-download via torchvision on first use (see REQUIREMENTS for
 disk/network notes -- this step's wall-clock is dominated by those
 downloads, not compute).
 
-    uv run python experiments/09_signatures_full.py \
+    uv run --frozen python experiments/09_signatures_full.py \
         --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base
 
 Expected: prints the best signature per task per model and writes
 `results/analysis/signature_auroc_full_<model>.csv`.
 
-    uv run python experiments/full_eval.py --dataset cifar100
+    uv run --frozen python experiments/full_eval.py --dataset cifar100
 
 Expected: prints per-task tables (T1/T2/T3) ranking every detector, and
 writes `results/analysis/full_eval_cifar100_summary.csv`. Check the
@@ -94,8 +117,9 @@ writes `results/analysis/full_eval_cifar100_summary.csv`. Check the
 "Expected headline numbers" table:
 
     T2 mean_dl ~ 0.98   T3 mean_dl ~ 0.84   (this 6-model core tier, run with the
-    four attacks used in the steps above -- NOT the paper's 0.966/0.824 headline,
-    which averages the full 20-arch panel; see README's "Reproducing the paper"
+    four attacks used in the steps above -- NOT the paper's
+    0.980/0.844 headline, which averages the
+    17-architecture held-out panel; see README's "Reproducing the paper"
     section for why these differ and why that's expected)
 
 A clean-clone run of exactly these steps on a single H200 (2026-07-29) measured
@@ -111,7 +135,7 @@ including them lowers the mean. Both numbers are correct for their respective
 attack sets -- README's "Reproducing the paper" section has the per-attack
 breakdown.
 
-    uv run python experiments/exp_master_table.py --dataset cifar100
+    uv run --frozen python experiments/exp_master_table.py --dataset cifar100
 
 Expected: prints a ranked detector table (reads the full_eval_cifar100_summary.csv
 just written above) and writes `results/analysis/master_comparison_cifar100.csv`
@@ -119,7 +143,7 @@ with the same T2/T3 numbers, alongside the logit/distance baseline comparison.
 
 Optional -- regenerate the paper's figures/tables from these results:
 
-    uv run python experiments/plot_t3_breakdown.py --out /tmp/fig_t3.pdf
+    uv run --frozen python experiments/plot_t3_breakdown.py --out /tmp/fig_t3.pdf
     # (see the Makefile `figures` target for the other figure scripts)
 
 Tier T2 -- extended (optional)
@@ -128,6 +152,14 @@ Repeat the T1 commands above without `--core-only` on 01_download.py and
 without `--models`/`--attacks` restrictions (defaults = all 20 architectures,
 all 6 attacks) on the later steps. Expect proportionally longer runtime and
 more disk.
+
+`full_eval.py` and the `experiments/exp_*.py` scripts automatically detect
+and exclude MobileOne-S1, ResNet-18, and ResNet-34: their archived first-layer
+feature files were found to contain identically-zero ID tensors (an
+extraction failure, not a detector score). The resulting 17-architecture
+panel is what the paper's headline numbers report; an
+`full_eval_<dataset>_exclusions.csv` file records exactly which
+architectures/files were dropped and why.
 
 Demo (optional, no GPU/weights needed)
 -----------------------------------------

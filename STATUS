@@ -3,36 +3,58 @@ Status
 
 Badges applied for: Available, Reviewed, Reproducible.
 
+Canonical release
+-----------------
+The intended latest release remains package version 0.1.3 / AE v5. Canonical
+artifact order is:
+
+1. Version-specific Zenodo archive: https://doi.org/10.5281/zenodo.21731404
+2. GitHub release/tag: https://github.com/amanyagami/viyog/releases/tag/v0.1.3-codes26-ae-6
+3. PyPI package: https://pypi.org/project/viyog/0.1.3/
+4. Hugging Face weights at revision
+   b96263ae28a8585acaad6a002a0298b6b6c2d735
+
+The Zenodo record is open, MIT-licensed, names all ten authors, and contains
+the 2,834,491-byte v5 source ZIP. Its concept DOI,
+https://doi.org/10.5281/zenodo.21614317, is only the collection landing page;
+use the version DOI above when citing or reproducing AE v5.
+
+The weights repository contains 34 checkpoints and uses 5,003,987,510 bytes
+(5.00 GB / 4.66 GiB). The six T1 files total 1.58 GB (1.47 GiB). The optional
+adversarial-data repository is pinned at revision
+5e15272b1023fbfb8420242c7da64884aacb9b91; Hugging Face reports
+66,086,584,118 bytes of repository storage, while the 40 files in the current
+snapshot total 41.84 GB. It is supplemental and is not consumed by the
+reproduction path. The optional static Space is pinned at revision
+c8d4c9fbbbf8f33372bc428d122ba271a202a405.
+
+The public Read the Docs deployment is stale and is not counted as current
+availability evidence. The corrected documentation source is in docs/ and must
+be reconnected to the canonical repository and rebuilt before restoring its
+README badge. Historical infinity-norm repositories, weights, presentations,
+and the old Google Drive fallback are legacy and unsupported.
+
+External publication checks still required
+------------------------------------------
+- Push these local CI fixes and rerun both GitHub Actions workflows. Their last
+  public runs at commit `983f16c` failed, so the Tests badge stays removed until
+  a public green run exists.
+- Reconnect Read the Docs to `github.com/amanyagami/viyog`, build this root
+  `.readthedocs.yaml`, inspect the generated dormant-band API pages, and only
+  then restore the Docs badge.
+
 Available
 ---------
-The code (the `viyog` PyPI package, its full reproduction pipeline in
-experiments/, the paper source in paper_rev/, and an interactive
-leaderboard in demo/) is public, MIT-licensed (LICENSE), and archived at a
-persistent, version-specific DOI. Each tagged release is archived
-separately; the DOI submitted for artifact evaluation is the one for this
-release, and it is recorded on the artifact submission form and in the
-README badge and CITATION.cff of the *following* commit.
-
-    Concept DOI (always resolves to the newest archived version):
-        https://doi.org/10.5281/zenodo.21614317
-
-Note on the self-reference: Zenodo mints a version's DOI only *after* that
-version's snapshot is taken, so a release cannot contain its own
-version-specific DOI. The badge and CITATION.cff inside any given snapshot
-therefore name the immediately preceding archived version. Per the AE
-call's guidance the version-specific DOI -- not the concept DOI above -- is
-what is cited on the submission form.
-
-It includes the five required documentation files (README,
-REQUIREMENTS, STATUS, LICENSE, INSTALL) and is reasonable and complete: it
-installs cleanly from PyPI (`pip install viyog`) and from source (`uv
-sync`), and every claim in the paper maps to a specific script and a
-specific command in README/INSTALL.
+The package, reproduction pipeline, paper source, and static leaderboard are
+public and MIT-licensed. The repository includes README, REQUIREMENTS, STATUS,
+LICENSE, and INSTALL; it installs from PyPI (`pip install viyog==0.1.3`) or from
+source (`uv sync --frozen`). Reproduction claims map to commands in README and
+INSTALL.
 
 Reviewed
 --------
 The artifact runs and produces the outputs it describes:
-  - `pytest tests/` passes (16/16) against the installed package.
+  - `pytest tests/` passes against the installed package.
   - `examples/quickstart.py --smoke` runs the packaged `Viyog` detector
     end-to-end on synthetic data and prints the three separation AUROCs the
     README documents.
@@ -88,9 +110,12 @@ Concretely, Tier T1 in README/INSTALL:
          respective attack sets; README carries the full per-attack
          breakdown so the difference is checkable, not surprising.
 
-     (b) Neither is the paper's headline 0.966/0.824, which averages the
-         full 20-architecture panel (Tier T2). Reproducing that exactly
-         requires the full Tier-T2 sweep.
+     (b) Neither is the paper's headline 0.980/0.844,
+         which averages the 17-architecture held-out panel (Tier T2 -- 20
+         architectures minus MobileOne-S1, ResNet-18, and ResNet-34, whose
+         archived first-layer features were found to be identically zero).
+         Reproducing that exactly requires the full Tier-T2 sweep over the
+         17-architecture panel.
 
 This was executed end-to-end during artifact preparation on a single CUDA
 GPU (an H200); see REQUIREMENTS for what hardware a reviewer needs and
@@ -125,9 +150,18 @@ What this artifact does not claim
 - Tier T3 (re-finetuning all 20 backbones from raw ImageNet weights) is
   GPU-weeks of compute and is documented but explicitly out of scope --
   this does not weaken the Reproducible claim above, which rests on T1.
-- The full 20-architecture, 3-ID-dataset sweep (Tier T2) is available and
-  was run during development, but is offered as additional evidence, not as
-  part of the required reproduction path.
+- The full 17-architecture (of the original 20; see the data-integrity note
+  below), 3-ID-dataset sweep (Tier T2) is available and was run during
+  development, but is offered as additional evidence, not as part of the
+  required reproduction path.
+- Data integrity: the archived first-layer feature files for MobileOne-S1,
+  ResNet-18, and ResNet-34 were found to contain identically-zero ID tensors
+  (an extraction failure). `experiments/full_eval.py` now detects and
+  excludes any such file automatically, writing
+  `results/analysis/full_eval_<dataset>_exclusions.csv`. All headline
+  numbers in this artifact and the paper report the resulting 17-architecture
+  panel; these three architectures' features were not re-extracted for this
+  submission.
 - One dataset variant (GTSRB) has an analysis file
   (`results/gtsrb/analysis/baselines_feature_gtsrb.csv`) that is currently
   empty on the development machine due to an unrelated data-pipeline gap;

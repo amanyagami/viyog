@@ -18,9 +18,11 @@ Software (all tiers)
 Tier T0 -- install & sanity check
 ----------------------------------
 - Hardware: any machine, CPU only. No GPU needed.
-- Software: `uv sync` (installs the core package: torch>=2.0, numpy>=1.23,
+- Software: `uv sync --frozen` (installs the core package: torch>=2.0, numpy>=1.23,
   optionally scikit-learn>=1.1 via the `metrics` extra).
-- Disk: <1 GB (PyTorch CPU wheel + the package itself).
+- Disk: budget up to 6 GB for the default Linux environment. The Viyog wheel is
+  small, but PyTorch may install CUDA runtime wheels even for this CPU-only tier;
+  a CPU-only PyTorch index can reduce that footprint.
 - Time: ~2 minutes.
 - Network: only to fetch Python packages from PyPI.
 
@@ -44,19 +46,18 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   (profiles defined from 8 GB upward). If you drive the steps by hand, both
   stages take a `--batch` override:
 
-      uv run python experiments/03_gen_adversarial.py ... --batch 16
-      uv run python experiments/06b_extract_full.py   ... --batch 128
+      uv run --frozen python experiments/03_gen_adversarial.py ... --batch 16
+      uv run --frozen python experiments/06b_extract_full.py   ... --batch 128
 
   Runtime scales up proportionally; results are unaffected -- batch size
   changes throughput only, never the computed statistics.
-- Software: `uv sync --group experiments` (adds torchattacks, timm,
+- Software: `uv sync --frozen --group experiments` (adds torchattacks, timm,
   pytorch-ood, h5py, pandas, fvcore, huggingface-hub, etc. -- see
   `[dependency-groups.experiments]` in pyproject.toml for the full pinned
   list).
 - Disk:
-    - ~250 MB for the 6 core-model checkpoints (fetched from
-      `huggingface.co/amanyagami/viyog-weights` by `01_download.py
-      --core-only`).
+    - 1.58 GB (1.47 GiB) for the 6 core-model checkpoints, pinned to revision
+      `b96263ae28a8585acaad6a002a0298b6b6c2d735` by `reproduce_t1.sh`.
     - CIFAR-100 + the OOD benchmark sets (CIFAR-10, SVHN, STL-10, DTD, MNIST,
       FashionMNIST, Flowers102, Food101, EuroSAT, GTSRB) auto-download via
       torchvision on first use -- budget several GB free disk; sizes vary per
@@ -65,7 +66,7 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
       GB, written under `data/adversarial/` and `results/features/`
       (both gitignored -- regenerated, never shipped).
 - Network: downloads the above datasets from their standard public mirrors
-  (torchvision's own download URLs) and the checkpoints from HuggingFace.
+  (torchvision's own download URLs) and the checkpoints from Hugging Face.
   Dataset download speed is the dominant, most variable cost of this tier --
   it is bounded by your network to those mirrors, not by this repository.
 - Time: budget **4+ hours** for a genuine first-time run against a fresh
@@ -73,7 +74,7 @@ Tier T1 -- core recompute (the Reproducible-badge claim)
   adversarial examples). This was measured directly, end to end, on a
   brand-new `git clone` into an empty directory (one H200, GPU otherwise
   idle, following INSTALL verbatim with no shortcuts):
-    - `01_download.py --core-only`: a few minutes (network-bound, ~250 MB).
+    - pinned checkpoint download: a few minutes (network-bound, 1.58 GB).
     - `03_gen_adversarial.py` (6 models x 4 attacks): **2h 6min** (7588s).
       Real GPU compute, not network -- APGD-CE alone is 100 gradient steps
       per batch per model on the full 10k-image test set. ViT-B is the long
@@ -104,7 +105,17 @@ Tier T2 -- extended (optional, not required for the claimed badges)
   architectures, cifar10 in addition to cifar100) because it covers more
   models/datasets, not because it needs different hardware.
 - `01_download.py` (no `--core-only`) fetches the full 34-file checkpoint
-  panel (~1.1 GB) from the same HuggingFace repo.
+  panel: 5.00 GB (4.66 GiB) at the pinned Hugging Face revision.
+
+Optional supplemental artifacts
+--------------------------------
+- The adversarial-data repository at revision
+  `5e15272b1023fbfb8420242c7da64884aacb9b91` contains 40 HDF5 files.
+  Hugging Face reports 66.09 GB of repository storage; the current file
+  snapshot totals 41.84 GB (38.97 GiB). It is not required by T0/T1/T2:
+  the reproduction pipeline regenerates attacks locally.
+- The live Space at revision `c8d4c9fbbbf8f33372bc428d122ba271a202a405`
+  is a static results explorer and requires no GPU, weights, or dataset.
 
 Tier T3 -- from scratch (documented, out of scope for this submission)
 ---------------------------------------------------------------------------
@@ -117,6 +128,10 @@ Tier T3 -- from scratch (documented, out of scope for this submission)
 
 Known environment caveats
 ---------------------------
+- The downloader intentionally has no Google Drive fallback: the historical
+  mirror's filenames do not match the current core set. It exits nonzero if the
+  pinned Hugging Face revision is unavailable; retry the same revision later.
+- The public Read the Docs deployment is stale; build/use docs/ from this checkout.
 - DeepFool and CW (`--attacks deepfool cw`) are optimization-based attacks
   that are algorithmically expensive regardless of implementation library;
   the paper itself caps their evaluation-set size for this reason. They are

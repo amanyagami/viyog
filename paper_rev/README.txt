@@ -12,16 +12,17 @@ CONTENTS
   final.bbl      Pre-compiled bibliography (so bibtex is optional).
   IEEEtran.cls   Document class (bundled for a self-contained build).
   IEEEtran.bst   Bibliography style.
-  figs/rebuttal/*.pdf   The 18 figures used by final.tex. These are generated
-                 outputs and are gitignored -- nothing precomputed is shipped
-                 in this artifact. Regenerate them with `make figures` from
-                 the repository root.
+  figs/rebuttal/*.pdf   The 18 figures used by final.tex. They are included in
+                 the camera-ready source package so a clean checkout builds
+                 without unpublished result files. They can be regenerated
+                 with `make figures` when the full result data are available.
 
 HOW TO BUILD
 ------------
   From the repository root:
-      make figures      # only if paper_rev/figs/rebuttal/ is empty
       make paper
+
+  To regenerate all figures from result data first, run `make figures`.
 
   Or directly, in this directory:
       pdflatex final && bibtex final && pdflatex final && pdflatex final

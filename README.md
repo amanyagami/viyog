@@ -3,8 +3,6 @@
 [![PyPI](https://img.shields.io/pypi/v/viyog.svg)](https://pypi.org/project/viyog/)
 [![Python](https://img.shields.io/pypi/pyversions/viyog.svg)](https://pypi.org/project/viyog/)
 [![Downloads](https://static.pepy.tech/badge/viyog)](https://pepy.tech/project/viyog)
-[![Docs](https://readthedocs.org/projects/viyog/badge/?version=latest)](https://viyog.readthedocs.io/en/latest/)
-[![Tests](https://github.com/amanyagami/viyog/actions/workflows/test.yml/badge.svg)](https://github.com/amanyagami/viyog/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
 [![Live demo](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-009E73)](https://huggingface.co/spaces/amanyagami/viyog)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21731404-blue)](https://doi.org/10.5281/zenodo.21731404)
@@ -34,9 +32,29 @@ versus 4.5–40 MB for feature-distance detectors such as Mahalanobis / KNN / Vi
 ## Install
 
 ```bash
-pip install viyog                 # core: torch + numpy
-pip install "viyog[metrics]"      # + scikit-learn, for viyog_metrics()
+pip install "viyog==0.1.3"          # core: torch + numpy
+pip install "viyog[metrics]==0.1.3" # + scikit-learn, for viyog_metrics()
 ```
+
+## Canonical artifacts
+
+The following are the maintained artifacts for this paper (verified
+2026-08-08). Use the immutable revisions when reproducing or citing the work.
+
+| Artifact | Canonical version | Purpose |
+| --- | --- | --- |
+| [Zenodo archive](https://doi.org/10.5281/zenodo.21731404) | AE v5, DOI `10.5281/zenodo.21731404` | Version-specific archival citation. The [concept DOI](https://doi.org/10.5281/zenodo.21614317) is the collection landing page. |
+| [GitHub source](https://github.com/amanyagami/viyog) | [`v0.1.3-codes26-ae-6`](https://github.com/amanyagami/viyog/releases/tag/v0.1.3-codes26-ae-6) | Package, experiments, paper source, and reproduction entry point. |
+| [PyPI package](https://pypi.org/project/viyog/0.1.3/) | `viyog==0.1.3` | Installable dormant-band-TV detector. |
+| [Model weights](https://huggingface.co/amanyagami/viyog-weights/tree/b96263ae28a8585acaad6a002a0298b6b6c2d735) | revision `b96263a`; 34 checkpoints, 5.00 GB (4.66 GiB) | Fine-tuned backbones. The six-model T1 subset is 1.58 GB (1.47 GiB). |
+| [Optional adversarial data](https://huggingface.co/datasets/amanyagami/viyog-adversarial/tree/5e15272b1023fbfb8420242c7da64884aacb9b91) | revision `5e15272`; 40 HDF5 files; 66.09 GB repository storage (41.84 GB current file payload) | Supplemental precomputed attacks. The reproduction script does **not** consume these files; it regenerates attacks. |
+| [Optional live Space](https://huggingface.co/spaces/amanyagami/viyog) | [revision `c8d4c9f`](https://huggingface.co/spaces/amanyagami/viyog/tree/c8d4c9fbbbf8f33372bc428d122ba271a202a405), running when verified | Static interactive results explorer, not the reproduction pipeline. |
+| Documentation source | [`docs/`](docs/) in this repository | Updated dormant-band API documentation. The public Read the Docs deployment is stale until it is reconnected and rebuilt, so it is not a canonical artifact yet. |
+
+The Zenodo v5 DOI and PyPI 0.1.3 are the intended latest releases. Historical
+infinity-norm prototypes, the old `MPSLab-ASU/Seperating_OOD_and_ADV` repository,
+the `Cifar100_Finetuned` weights, the empty ViT placeholder, and the old Google
+Drive folder are legacy artifacts and are **not** supported reproduction sources.
 
 ## Quickstart
 
@@ -65,8 +83,8 @@ print(viyog_metrics(ood_scores.cpu().numpy(), adv_scores.cpu().numpy()))
 
 ### With a real model (timm)
 
-Viyog auto-detects the first conv layer (`resnet50.conv1` here), so any
-`torch.nn.Module` works out of the box:
+Viyog auto-detects the first convolutional layer (`resnet50.conv1` here), so
+models with a `Conv1d` or `Conv2d` feature map work out of the box:
 
 ```python
 import torch, timm
@@ -120,27 +138,31 @@ Fitted attributes: `dorm_idx_`, `id_profile_`, `id_score_mean_`, `n_channels_`,
 
 ## Results
 
-Across 20 architectures on CIFAR-100 (ResNet/DenseNet/ConvNeXt/Swin/ViT and edge
-backbones), the dormant-band roughness score reaches **AUROC ≈ 0.966 for adversarial
-detection (ID vs ADV)** and **≈ 0.824 for OOD vs ADV** — where logit detectors
-(Energy/MSP/MaxLogit/GEN) are near-blind to adversarials (≤ 0.69) and feature-distance
+Across the 17-architecture held-out panel on CIFAR-100 (ResNet/DenseNet/ConvNeXt/Swin/ViT
+and edge backbones — MobileOne-S1, ResNet-18, and ResNet-34 are excluded because their
+archived first-layer feature files were found to be corrupted, see STATUS), the
+dormant-band roughness score reaches **AUROC ≈ 0.980 for adversarial
+detection (ID vs ADV)** and **≈ 0.844 for OOD vs ADV** — where logit detectors
+(Energy/MSP/MaxLogit/GEN) are near-blind to adversarials and feature-distance
 detectors cost 4.5–40 MB of state versus Viyog's ~0.3 KB. See the accompanying paper.
 
 ## Reproducing the paper
 
-This repository is also the CODES 2026 artifact for the accompanying paper: besides
-the installable package (`src/viyog/`), it contains the full reproduction pipeline
-(`experiments/`), the paper source (`paper_rev/`), and an interactive leaderboard
-(`demo/`). Nothing the paper reports is shipped as a precomputed result to replay —
-every number below is regenerated live from the same public checkpoints and public
-benchmark datasets the paper used. See [REQUIREMENTS](REQUIREMENTS), [INSTALL](INSTALL)
-and [STATUS](STATUS) for the full detail; the summary:
+This repository is the CODES+ISSS 2026 journal-track artifact for the
+accompanying paper, accepted for publication in *IEEE Transactions on
+Computer-Aided Design of Integrated Circuits and Systems* (IEEE TCAD). Besides
+the installable package (`src/viyog/`), it contains the full reproduction
+pipeline (`experiments/`), the paper source (`paper_rev/`), and an interactive
+leaderboard (`demo/`). Nothing the core tier reports is shipped as a precomputed
+result to replay: the numbers below are regenerated from the public checkpoints
+and benchmark datasets. See [REQUIREMENTS](REQUIREMENTS), [INSTALL](INSTALL),
+and [STATUS](STATUS) for details.
 
 | Tier | What it does | Hardware | Badge |
 | --- | --- | --- | --- |
 | **T0 — sanity** | `pytest` + `examples/quickstart.py --smoke` | CPU, ~2 min | Reviewed |
 | **T1 — core recompute** | Fetch the 6 core checkpoints, regenerate adversarial examples, extract first-conv features, recompute every signature's AUROC — from scratch, nothing cached | 1 CUDA GPU, 4+ hours (first run; much faster on a re-run) | **Reproducible** |
-| **T2 — extended** | Same pipeline, all 20 architectures + cifar10 | 1 CUDA GPU, longer | extra evidence |
+| **T2 — extended** | Same pipeline, the 17-architecture held-out panel + cifar10 | 1 CUDA GPU, longer | extra evidence |
 | **T3 — from scratch** | Re-finetune all 20 backbones from raw ImageNet weights | GPU-weeks | documented, out of scope |
 
 **Reviewers: one command reproduces Tier T1 end to end.**
@@ -149,6 +171,11 @@ and [STATUS](STATUS) for the full detail; the summary:
 bash reproduce_t1.sh --quick    # smoke test — does the pipeline work here?
 bash reproduce_t1.sh            # full Tier T1 — reproduce the paper
 ```
+
+The wrapper downloads the six checkpoints from immutable Hugging Face revision
+`b96263ae28a8585acaad6a002a0298b6b6c2d735` (1.58 GB / 1.47 GiB). The optional
+41.84 GB adversarial-data snapshot is not downloaded: adversarial examples are
+regenerated locally.
 
 `reproduce_t1.sh` preflights your machine (GPU, VRAM, disk), **scales both GPU
 batch sizes to your card** (the committed defaults are sized for a 143 GB H200;
@@ -167,18 +194,17 @@ The individual steps below remain available if you would rather drive them
 yourself (see INSTALL for the full walkthrough):
 
 ```bash
-uv sync --group experiments
-python experiments/01_download.py --core-only          # fetch 6 checkpoints from HF
-python experiments/03_gen_adversarial.py \
+uv sync --frozen --group experiments
+uv run --frozen python experiments/01_download.py --core-only
+uv run --frozen python experiments/03_gen_adversarial.py \
     --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
-    --attacks fgsm bim pgd apgd_ce                       # regenerate ADV examples live
-python experiments/06b_extract_full.py \
+    --attacks fgsm bim pgd apgd_ce
+uv run --frozen python experiments/06b_extract_full.py \
     --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base \
-    --attacks fgsm bim pgd apgd_ce                       # extract first-conv features
-python experiments/09_signatures_full.py \
+    --attacks fgsm bim pgd apgd_ce
+uv run --frozen python experiments/09_signatures_full.py \
     --models convnextv2_base densenet121 mobilenetv3_l resnet50 swin_tiny vit_base
-                                                          # recompute every signature's AUROC
-python experiments/full_eval.py --dataset cifar100       # aggregate + compare vs logit baselines
+uv run --frozen python experiments/full_eval.py --dataset cifar100
 ```
 
 Expected headline numbers for **this 6-model core tier** (CIFAR-100,
@@ -196,8 +222,8 @@ They are architecture-only measurements over the paper's panel and need no GPU,
 no weights and no dataset, so reproduce them separately in seconds:
 
 ```bash
-uv run python experiments/eval_detector_cost.py   # state memory, per model
-uv run python experiments/eval_systems.py         # fvcore MAC ratios
+uv run --frozen python experiments/eval_detector_cost.py   # state memory, per model
+uv run --frozen python experiments/eval_systems.py         # fvcore MAC ratios
 ```
 
 State scales linearly with the first conv's output-channel count, so read the
@@ -234,10 +260,12 @@ instead, add `deepfool cw` to the `--attacks` list of *both*
 longer run, since both are optimisation-based and the paper caps their eval-set
 size for the same reason.
 
-Neither figure is the paper's headline **0.966 / 0.824**: that is the full
-**20-architecture** panel (Tier T2), whereas this core tier is a deliberately
-smaller, GPU-hours-bounded 6-model subset. Reproducing the headline exactly
-needs the full Tier-T2 sweep.
+Neither figure is the paper's headline **0.980 / 0.844**:
+that is the full **17-architecture held-out** panel (Tier T2 — 20 architectures minus
+MobileOne-S1, ResNet-18, and ResNet-34, whose archived first-layer features are
+corrupted; see STATUS), whereas this core tier is a deliberately smaller,
+GPU-hours-bounded 6-model subset. Reproducing the headline exactly needs the full
+Tier-T2 sweep over the 17-architecture panel.
 
 ## License
 
@@ -245,5 +273,10 @@ MIT — see [LICENSE](LICENSE).
 
 ## Citation
 
-If you use Viyog in academic work, please cite the accompanying paper
-*"Viyog: Separating Adversarial and Out-of-Distribution."*
+If you use Viyog, cite *"Viyog: Separating Adversarial and
+Out-of-Distribution"* using [CITATION.cff](CITATION.cff). It follows the
+CODES+ISSS 2026 journal route in IEEE TCAD. A publication DOI, volume, issue,
+and pages have not yet been assigned, so they are intentionally omitted.
+
+For the software artifact itself, cite the immutable AE v5 archive:
+[`10.5281/zenodo.21731404`](https://doi.org/10.5281/zenodo.21731404).
