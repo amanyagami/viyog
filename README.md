@@ -1,4 +1,10 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/amanyagami/viyog/main/Viyog.png" alt="Viyog" width="420">
+
 # Viyog
+
+**Tell adversarial inputs apart from out-of-distribution inputs, in one forward pass, with no training and no gradients.**
 
 [![PyPI](https://img.shields.io/pypi/v/viyog.svg)](https://pypi.org/project/viyog/)
 [![Python](https://img.shields.io/pypi/pyversions/viyog.svg)](https://pypi.org/project/viyog/)
@@ -6,10 +12,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/amanyagami/viyog/blob/main/LICENSE)
 [![Live demo](https://img.shields.io/badge/%F0%9F%A4%97-Live%20demo-009E73)](https://huggingface.co/spaces/amanyagami/viyog)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.21918573-blue)](https://doi.org/10.5281/zenodo.21918573)
+[![Tests](https://github.com/amanyagami/viyog/actions/workflows/test.yml/badge.svg)](https://github.com/amanyagami/viyog/actions/workflows/test.yml)
+![Typed](https://img.shields.io/badge/types-pyright-informational)
+
+</div>
 
 **[▶ Try the interactive leaderboard](https://huggingface.co/spaces/amanyagami/viyog)** — Viyog vs 9 `pytorch-ood` baselines across 20 architectures.
 
-**Separate adversarial (ADV) inputs from out-of-distribution (OOD) inputs — in one forward pass, with no training and no gradients.**
 
 Safety-critical systems must respond *differently* to two kinds of anomaly: OOD
 inputs call for **abstention**, adversarial inputs demand **rejection**. Standard
@@ -28,6 +37,15 @@ smooth. Viyog measures that roughness as a single scalar `V(x)`:
 It adds no parameters, never touches the backward pass, and stores only `O(C)`
 bytes of state (the dormant-channel ranking + one ID mean) — roughly **0.3 KB**,
 versus 4.5–40 MB for feature-distance detectors such as Mahalanobis / KNN / ViM.
+
+```mermaid
+flowchart LR
+    X[Input x] --> C[First conv layer<br/>forward hook]
+    C --> D["Dormant band<br/>quietest 10% of channels"]
+    D --> V["V(x): magnitude-normalised<br/>total variation"]
+    V -->|high| A[Adversarial: reject]
+    V -->|low| O[ID / OOD: abstain or accept]
+```
 
 ## Install
 
