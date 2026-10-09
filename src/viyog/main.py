@@ -44,7 +44,7 @@ from __future__ import annotations
 import threading
 import weakref
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -203,7 +203,9 @@ class Viyog:
         return feats
 
     @staticmethod
-    def _mean_and_tv(feats: torch.Tensor, is_conv1d: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
+    def _mean_and_tv(
+        feats: torch.Tensor, is_conv1d: bool = False
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Per-channel mean |activation| and magnitude-normalised total variation.
 
         Accepts ``(B, C, H, W)`` conv maps (2-D total variation over H and W) or
@@ -247,8 +249,8 @@ class Viyog:
     def _batch_x(batch: Any) -> torch.Tensor:
         """Extract the input tensor from a ``(inputs, ...)`` batch or a raw tensor."""
         if isinstance(batch, (list, tuple)) and len(batch) >= 1:
-            return batch[0]
-        return batch
+            return cast("torch.Tensor", batch[0])
+        return cast("torch.Tensor", batch)
 
     # -------------------------------------------------------------------- fit
     @torch.no_grad()
@@ -285,11 +287,12 @@ class Viyog:
                 sum_fmean = fmean.sum(dim=0).double()
                 sum_tv = tv.sum(dim=0).double()
             else:
+                assert sum_tv is not None  # set together with sum_fmean
                 sum_fmean += fmean.sum(dim=0).double()
                 sum_tv += tv.sum(dim=0).double()
             count += fmean.shape[0]
 
-        if count == 0 or sum_fmean is None:
+        if count == 0 or sum_fmean is None or sum_tv is None:
             raise RuntimeError("id_loader produced no batches.")
 
         profile = (sum_fmean / count).float()  # (C,) mean |act| per channel
@@ -385,6 +388,13 @@ class Viyog:
 # ---------------------------------------------------------------------------
 # Metrics (optional: needs scikit-learn — `pip install viyog[metrics]`)
 # ---------------------------------------------------------------------------
+def _trapezoid(y: Any, x: Any) -> float:
+    """Trapezoidal integral of ``y`` over ``x`` as a Python float."""
+    import numpy as np
+
+    return float(np.asarray(np.trapezoid(y, x), dtype=np.float64))
+
+
 def viyog_metrics(
     ood_scores: Sequence[float],
     adv_scores: Sequence[float],
@@ -438,8 +448,8 @@ def viyog_metrics(
     th, f_, t_ = thresholds[finite], fpr[finite], tpr[finite]
     if len(th) > 1 and th[0] > th[-1]:
         th, f_, t_ = th[::-1], f_[::-1], t_[::-1]
-    aufpr = float(np.trapezoid(f_, th)) if len(th) > 1 else 0.0
-    aufnr = float(np.trapezoid(1.0 - t_, th)) if len(th) > 1 else 0.0
+    aufpr = _trapezoid(f_, th) if len(th) > 1 else 0.0
+    aufnr = _trapezoid(1.0 - t_, th) if len(th) > 1 else 0.0
     autc = 0.5 * (aufpr + aufnr)
 
     return {

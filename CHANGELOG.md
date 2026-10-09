@@ -4,6 +4,17 @@ All notable changes to `viyog` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Static type checking with pyright (`uv run pyright`), run in CI.
+- Python 3.13 in the CI matrix and package classifiers.
+- Test that a ViT-style model's patch-embedding convolution is auto-detected.
+
+### Fixed
+- Type errors found by pyright in `Viyog.fit` (optional accumulators) and
+  `viyog_metrics` (AUTC integral); no behaviour change.
+
 ## [0.1.3] — 2026-07-13
 
 ### Added

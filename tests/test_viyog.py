@@ -149,7 +149,8 @@ class _HeadlessConvNet(torch.nn.Module):
     """No classification head, so its forward is unbatched-safe end to end --
     isolates Viyog's own batching logic from an unrelated Linear-head shape
     mismatch on unbatched input (which is a property of the wrapped model,
-    not of Viyog)."""
+    not of Viyog).
+    """
 
     def __init__(self, in_ch: int = 3, out_ch: int = 8) -> None:
         super().__init__()
@@ -164,7 +165,8 @@ def test_unbatched_input_matches_batch_of_one() -> None:
     the same image with an explicit batch dim of 1, not be silently
     misread as a (B, C, L) 1-D-signal batch (regression: a Conv2d hook's
     unbatched 3-D output was previously misdispatched to the Conv1d branch,
-    returning a plausible but meaningless score with no error)."""
+    returning a plausible but meaningless score with no error).
+    """
     torch.manual_seed(0)
     x = _smooth_images(16)
     with Viyog(_HeadlessConvNet(), device="cpu") as v:
@@ -180,7 +182,8 @@ def test_unbatched_input_matches_batch_of_one() -> None:
 def test_conv1d_batch_still_uses_1d_branch() -> None:
     """A genuine (B, C, L) Conv1d batch must not be affected by the unbatched-
     Conv2d disambiguation above -- same dim() as an unbatched Conv2d map, but
-    a different, legitimate meaning."""
+    a different, legitimate meaning.
+    """
 
     class _Sig(torch.nn.Module):
         def __init__(self) -> None:
@@ -202,7 +205,8 @@ def test_instance_freed_without_close() -> None:
     """The forward hook must hold a weak reference to the detector: a strong
     reference would create model -> hooks -> closure -> self cycle, so a
     Viyog dropped without close()/context-manager would survive until the
-    next cyclic-GC pass instead of being freed immediately (regression)."""
+    next cyclic-GC pass instead of being freed immediately (regression).
+    """
     torch.manual_seed(0)
     model = _HeadlessConvNet()
     gc.disable()
@@ -222,7 +226,8 @@ def test_concurrent_score_is_thread_safe() -> None:
     """Two threads calling score() on the SAME detector instance must not
     observe each other's activations (regression: the hook wrote into shared
     instance state with no locking around the capture-forward-read
-    sequence)."""
+    sequence).
+    """
     torch.manual_seed(0)
     with Viyog(_HeadlessConvNet(), device="cpu") as v:
         v.fit(_loader(_smooth_images(16)))
@@ -236,8 +241,9 @@ def test_concurrent_score_is_thread_safe() -> None:
             out[key] = v.score(x)
 
         pairs = [("a", a), ("b", b)] * 8
-        threads = [threading.Thread(target=run, args=(f"{k}{i}", x))
-                   for i, (k, x) in enumerate(pairs)]
+        threads = [
+            threading.Thread(target=run, args=(f"{k}{i}", x)) for i, (k, x) in enumerate(pairs)
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -246,3 +252,34 @@ def test_concurrent_score_is_thread_safe() -> None:
     for key, result in out.items():
         ref = ref_a if key.startswith("a") else ref_b
         assert torch.allclose(result, ref, atol=1e-6), f"{key} diverged from serial reference"
+
+
+class _TinyViT(torch.nn.Module):
+    """Minimal ViT-style model: the only convolution is the patch embedding."""
+
+    def __init__(self, dim: int = 16, patch: int = 4) -> None:
+        super().__init__()
+        self.patch_embed = torch.nn.Sequential()
+        self.patch_embed.add_module(
+            "proj", torch.nn.Conv2d(3, dim, kernel_size=patch, stride=patch)
+        )
+        layer = torch.nn.TransformerEncoderLayer(dim, nhead=2, dim_feedforward=32, batch_first=True)
+        self.encoder = torch.nn.TransformerEncoder(layer, num_layers=1)
+        self.head = torch.nn.Linear(dim, 2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        tokens = self.patch_embed(x).flatten(2).transpose(1, 2)
+        return self.head(self.encoder(tokens).mean(dim=1))
+
+
+def test_vit_patch_embedding_is_auto_detected() -> None:
+    """Transformers have no ``conv1``; the patch-embedding conv is the first conv."""
+    torch.manual_seed(0)
+    x = _smooth_images(32, size=32)
+    with Viyog(_TinyViT(), device="cpu") as v:
+        v.fit(_loader(x))
+        scores = v.score(x)
+        assert v.layer_name_ == "patch_embed.proj"
+        assert v.n_channels_ == 16
+    assert scores.shape == (32,)
+    assert torch.isfinite(scores).all()
